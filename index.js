@@ -1,143 +1,476 @@
-const puppeteer = require('puppeteer-core');
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const app = express();
-
-let lastScreenshot = null;
-
-app.get('/', (req, res) => {
-    const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Keeper Active</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding: 20px;
-                    background: #f5f5f5;
-                }
-                h1 { color: #333; }
-                .screenshot {
-                    margin-top: 20px;
-                    border: 2px solid #ddd;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    background: white;
-                }
-                .screenshot img {
-                    width: 100%;
-                    height: auto;
-                    display: block;
-                }
-                .no-screenshot {
-                    padding: 40px;
-                    text-align: center;
-                    color: #666;
-                }
-            </style>
-        </head>
-        <body>
-            <h1>🟢 Keeper Active</h1>
-            <p>Last screenshot taken: ${lastScreenshot ? new Date().toLocaleString() : 'No screenshot yet'}</p>
-            <div class="screenshot">
-                ${lastScreenshot 
-                    ? `<img src="data:image/png;base64,${lastScreenshot}" alt="Latest Screenshot" />` 
-                    : '<div class="no-screenshot">Waiting for first screenshot...</div>'}
-            </div>
-        </body>
-        </html>
-    `;
-    res.send(html);
-});
-
-app.listen(8080);
-
-function findChrome() {
-    const paths = ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', process.env.CHROME_PATH].filter(Boolean);
-    for (const p of paths) { if (fs.existsSync(p)) return p; }
-    throw new Error('Chrome not found');
+[
+{
+    "domain": ".replit.com",
+    "expirationDate": 1767522407.39556,
+    "hostOnly": false,
+    "httpOnly": true,
+    "name": "__cf_bm",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "DgURqNGOsEy34FL.AKqKdlzZ5S2Xp6jGknex_C0NhXw-1767520607-1.0.1.1-CWbQUiJgnfArGKob6Y_oBLKsNXzRBTO.MtSBa8u6Nziqg8bn5lTmNAMmUPkr9kyk2Raqcuz4OLqa6JfHboYPf39WtdwYpcOTUynQZ.wz7do",
+    "id": 1
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1780936769,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "__d_d_r__",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "https://replit.com/",
+    "id": 2
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1780936769,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "__d_d_r_l__",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "",
+    "id": 3
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1799057295,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "__stripe_mid",
+    "path": "/",
+    "sameSite": "strict",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "5ea4385e-0d56-4e42-b22c-a57c08d6cb86aab10b",
+    "id": 4
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1767523095,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "__stripe_sid",
+    "path": "/",
+    "sameSite": "strict",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "6e48a131-e630-414c-8641-b49995381f3f8dab2c",
+    "id": 5
+},
+{
+    "domain": ".replit.com",
+    "hostOnly": false,
+    "httpOnly": true,
+    "name": "_cfuvid",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": true,
+    "storeId": "0",
+    "value": "EC34XBpFkgAUmNv3BRLUzi8_kKCxGqWV4vqlKKjk5AI-1767520607787-0.0.1.1-604800000",
+    "id": 6
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1802081121.53419,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_ga",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "GA1.2.117838130.1750326882",
+    "id": 7
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1802081291.04353,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_ga_MPJY3F1YEL",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "GS2.2.s1767520611$o41$g1$t1767521291$j60$l0$h882235840",
+    "id": 8
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1774093304,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_gcl_au",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "1.1.1078894665.1766317304",
+    "id": 9
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1767607521,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_gid",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "GA1.2.631304384.1767477806",
+    "id": 10
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1796920769,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_hjSessionUser_5199682",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "eyJpZCI6ImYxZWNhNjZjLWM1YjQtNTA1Ni1iY2FkLTA4N2JjNmRmYjNhNiIsImNyZWF0ZWQiOjE3NTAzMjY4ODAxNDAsImV4aXN0aW5nIjp0cnVlfQ==",
+    "id": 11
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1792671655,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_tt_enable_cookie",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "1",
+    "id": 12
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1792671655,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_ttp",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "01JY3SSAF8M39164NT8HCD8XYW_.tt.1",
+    "id": 13
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1796920771,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_zitok",
+    "path": "/",
+    "sameSite": "strict",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "2073b7b82eb28170d52f1750326884",
+    "id": 14
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1768082605,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "AF_SYNC",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "1767477805609",
+    "id": 15
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1802081121.345084,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "afUserId",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "a63be096-37e8-4d67-a44e-da267ad91319-p",
+    "id": 16
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1799057290,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "ajs_anonymous_id",
+    "path": "/",
+    "sameSite": "lax",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "661395a0-1520-4d9c-9132-dbd911ca7c7b",
+    "id": 17
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1799057290,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "ajs_user_id",
+    "path": "/",
+    "sameSite": "lax",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "44022475",
+    "id": 18
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1802077813,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "coframe.cvc",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "22",
+    "id": 19
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1802077813,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "coframe.lastVisitTime",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "1767517813110",
+    "id": 20
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1802081121,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "coframe.user.token",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "4739d7eb-fbeb-4a81-ae04-9b2661e72383",
+    "id": 21
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1796920769,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "signals-sdk-user-id",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "4c8851b9-2391-4ddd-9f56-2d64442fb513",
+    "id": 22
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1792671911,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "ttcsid",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "1758974193249::5G_UmpoLjFgVQRa9fKy0.9.1758975911875.0",
+    "id": 23
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1792671911,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "ttcsid_D004GE3C77U8PIVDSDJG",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "1758974193248::oPNk8vEM0AWbqSnkNiIE.10.1758975911876.0",
+    "id": 24
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1788720914,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "ttcsid_D004OSJC77U7QLNJ32IG",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "1755024913252::UXb5m3eBJ_w8KcjR0Gtk.2.1755024914929",
+    "id": 25
+},
+{
+    "domain": "replit.com",
+    "expirationDate": 1788423409,
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "__spdt",
+    "path": "/",
+    "sameSite": "strict",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "077e57f87613402cae06733fb97f5304",
+    "id": 26
+},
+{
+    "domain": "replit.com",
+    "expirationDate": 1767522270,
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "_dd_s",
+    "path": "/",
+    "sameSite": "strict",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "logs=1&id=51c81116-c6d2-4121-8f8b-8d9454b3b3c7&created=1767520608161&expire=1767522268354&rum=0",
+    "id": 27
+},
+{
+    "domain": "replit.com",
+    "expirationDate": 1797971698,
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "ajs_anonymous_id",
+    "path": "/",
+    "sameSite": "lax",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "661395a0-1520-4d9c-9132-dbd911ca7c7b",
+    "id": 28
+},
+{
+    "domain": "replit.com",
+    "expirationDate": 1797971698,
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "ajs_user_id",
+    "path": "/",
+    "sameSite": "lax",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "44022475",
+    "id": 29
+},
+{
+    "domain": "replit.com",
+    "expirationDate": 1767523090,
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "amplitudeSessionId",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "1767520608",
+    "id": 30
+},
+{
+    "domain": "replit.com",
+    "expirationDate": 1768124432.268357,
+    "hostOnly": true,
+    "httpOnly": true,
+    "name": "connect.sid",
+    "path": "/",
+    "sameSite": "lax",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImM0MTZJUSJ9.eyJpc3MiOiJodHRwczovL3Nlc3Npb24uZmlyZWJhc2UuZ29vZ2xlLmNvbS9yZXBsaXQtd2ViIiwibmFtZSI6IlNwaWtlQ29uZXoiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jSmlXVVdIdlRoN0MycmVSOExMZVhUbDJ3eVdmbjA2QnVWRnFpTGF4YXUxYi1ITUJnXHUwMDNkczk2LWMiLCJhdWQiOiJyZXBsaXQtd2ViIiwiYXV0aF90aW1lIjoxNzY2MjI4NTg4LCJ1c2VyX2lkIjoiMFo5SW44OFk4ZGNWQXZxamR6ZTRRQk1qNGhEMyIsInN1YiI6IjBaOUluODhZOGRjVkF2cWpkemU0UUJNajRoRDMiLCJpYXQiOjE3Njc1MTk2MzIsImV4cCI6MTc2ODEyNDQzMiwiZW1haWwiOiJzcGlrZWNvbmV6QGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7Imdvb2dsZS5jb20iOlsiMTAxNzQwMTYyMzg3MTE0ODcyNjIyIl0sImVtYWlsIjpbInNwaWtlY29uZXpAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoiZ29vZ2xlLmNvbSJ9fQ.OoUAmgZLAXrxoDCgGQSg_cTArsjmO0HGBbE0J0Bi_lkKglw3ioOpIBgGMNeacAIbaWDnw0MuQNhbmCIj2ewr_SMJ1d9ui2qcLi4WHGcPH8lijykWWGoq75gYle6TGOd9dlT2UW9OztAmwpb9bKHmLzI_hIVCDHMBC8mujni93jILCYu7wugbrwfeKF331ITimN-DsLiN4_1soTGMXkykVKeniDq4i11mGrlkg_iosHUTOst1hmXPmmdD7OINoEkmHiJQbjbQEnq7ly2263p8D6NqSlbXl8q_9xytt6LRc9ytMYnAVV1MAeZPnaJj--d02uAAJpHiRhQtGG9z5J6QAg",
+    "id": 31
+},
+{
+    "domain": "replit.com",
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "ld_uid",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": true,
+    "storeId": "0",
+    "value": "44022475",
+    "id": 32
+},
+{
+    "domain": "replit.com",
+    "expirationDate": 1768124432.018593,
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "replit_authed",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "1",
+    "id": 33
+},
+{
+    "domain": "replit.com",
+    "expirationDate": 1796920824.804194,
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "replit_statsig_stable_id",
+    "path": "/",
+    "sameSite": "lax",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "e22e40c8-987f-47ec-bef1-512b4efc2b61",
+    "id": 34
 }
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-async function startBrowser() {
-    const userDataDir = path.join(__dirname, 'chrome_user_data');
-    const cookiesPath = path.join(__dirname, 'replit_cookies.json');
-    const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
-    const RELOAD_INTERVAL = 5 * 60 * 1000; // Reload every 5 minutes
-
-    console.log("Starting browser session...");
-    let browser = null;
-
-    try {
-        const chromePath = findChrome();
-        browser = await puppeteer.launch({
-            headless: "new",
-            executablePath: chromePath,
-            userDataDir: userDataDir,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-        });
-
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-        // Pass browser logs to terminal
-        page.on('console', msg => console.log(`[BROWSER] ${msg.text()}`));
-
-        if (fs.existsSync(cookiesPath)) {
-            const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
-            await page.setCookie(...cookies);
-            console.log(`✓ Cookies loaded`);
-        }
-
-        async function loadAndClick() {
-            console.log(`⏳ Loading Replit Workspace...`);
-            try {
-                await page.goto(REPL_URL, { waitUntil: 'networkidle2', timeout: 120000 });
-                await sleep(10000); // Wait for page to fully load
-
-                // Click anywhere on the screen using native JS click
-                await page.evaluate(() => {
-                    document.body.click();
-                    console.log('🖱️ Clicked on page body');
-                });
-
-                console.log('✓ Click executed successfully');
-
-                // Take screenshot
-                const screenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
-                lastScreenshot = screenshot;
-                console.log('📸 Screenshot captured');
-
-            } catch (e) {
-                console.error("Load failed, retrying in 30s...", e.message);
-                await sleep(30000);
-                return loadAndClick();
-            }
-        }
-
-        // Initial Load and Click
-        await loadAndClick();
-
-        // Periodically refresh the page every 5 minutes
-        setInterval(async () => {
-            console.log("🔄 Performing scheduled 5-minute refresh...");
-            await loadAndClick();
-        }, RELOAD_INTERVAL);
-
-        // Keep process alive
-        await new Promise(() => {});
-
-    } catch (err) {
-        console.error("❌ Fatal Error:", err.message);
-        if (browser) await browser.close();
-        setTimeout(startBrowser, 10000); // Restart entire browser on crash
-    }
-}
-
-startBrowser();
+]
