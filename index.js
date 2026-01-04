@@ -60,6 +60,12 @@ app.get('/', (req, res) => {
                 .controls button.secondary:hover {
                     background: #2980b9;
                 }
+                .controls button.screenshot-btn {
+                    background: #9b59b6;
+                }
+                .controls button.screenshot-btn:hover {
+                    background: #8e44ad;
+                }
                 .controls input {
                     padding: 10px;
                     margin: 5px;
@@ -117,6 +123,7 @@ app.get('/', (req, res) => {
             </div>
 
             <div class="controls">
+                <button onclick="takeScreenshot()" class="screenshot-btn">📸 Take Screenshot</button>
                 <button onclick="refresh()">🔄 Refresh Screenshot</button>
                 <button onclick="reload()">↻ Reload Page</button>
                 <button onclick="goBack()" class="secondary">← Back</button>
@@ -143,6 +150,23 @@ app.get('/', (req, res) => {
 
                 function updateLiveStatus(msg) {
                     document.getElementById('liveStatus').textContent = msg;
+                }
+
+                async function takeScreenshot() {
+                    updateStatus('Taking screenshot...');
+                    const res = await fetch('/take-screenshot', { method: 'POST' });
+                    const data = await res.json();
+                    if (data.screenshot) {
+                        const img = document.getElementById('screenshot');
+                        if (img) {
+                            img.src = 'data:image/jpeg;base64,' + data.screenshot;
+                        } else {
+                            location.reload();
+                        }
+                        updateStatus('Screenshot captured!');
+                    } else {
+                        updateStatus('Failed to take screenshot');
+                    }
                 }
 
                 async function refresh() {
@@ -188,28 +212,28 @@ app.get('/', (req, res) => {
                     updateStatus(data.message || 'Clicked');
 
                     // Auto refresh after click
-                    setTimeout(refresh, 1000);
+                    setTimeout(takeScreenshot, 1000);
                 }
 
                 async function reload() {
                     updateStatus('Reloading page...');
                     await fetch('/reload', {method: 'POST'});
                     updateStatus('Page reloaded');
-                    setTimeout(refresh, 2000);
+                    setTimeout(takeScreenshot, 2000);
                 }
 
                 async function goBack() {
                     updateStatus('Going back...');
                     await fetch('/back', {method: 'POST'});
                     updateStatus('Navigated back');
-                    setTimeout(refresh, 2000);
+                    setTimeout(takeScreenshot, 2000);
                 }
 
                 async function goForward() {
                     updateStatus('Going forward...');
                     await fetch('/forward', {method: 'POST'});
                     updateStatus('Navigated forward');
-                    setTimeout(refresh, 2000);
+                    setTimeout(takeScreenshot, 2000);
                 }
 
                 async function navigate() {
@@ -222,7 +246,7 @@ app.get('/', (req, res) => {
                         body: JSON.stringify({url})
                     });
                     updateStatus('Navigation complete');
-                    setTimeout(refresh, 2000);
+                    setTimeout(takeScreenshot, 2000);
                 }
 
                 async function executeJS() {
@@ -236,7 +260,7 @@ app.get('/', (req, res) => {
                     });
                     const data = await res.json();
                     updateStatus('Result: ' + JSON.stringify(data.result));
-                    setTimeout(refresh, 1000);
+                    setTimeout(takeScreenshot, 1000);
                 }
 
                 async function typeText() {
@@ -249,7 +273,7 @@ app.get('/', (req, res) => {
                         body: JSON.stringify({text})
                     });
                     updateStatus('Text typed');
-                    setTimeout(refresh, 1000);
+                    setTimeout(takeScreenshot, 1000);
                 }
 
                 // Auto-refresh every 10 seconds
@@ -264,6 +288,14 @@ app.get('/', (req, res) => {
 // API Endpoints
 app.get('/screenshot', async (req, res) => {
     try {
+        res.json({ screenshot: lastScreenshot });
+    } catch (e) {
+        res.json({ screenshot: lastScreenshot, error: e.message });
+    }
+});
+
+app.post('/take-screenshot', async (req, res) => {
+    try {
         if (currentPage) {
             const screenshot = await currentPage.screenshot({ 
                 encoding: 'base64', 
@@ -271,12 +303,14 @@ app.get('/screenshot', async (req, res) => {
                 quality: 60 
             });
             lastScreenshot = screenshot;
-            res.json({ screenshot });
+            console.log('📸 Manual screenshot captured');
+            res.json({ success: true, screenshot });
         } else {
-            res.json({ screenshot: lastScreenshot });
+            res.json({ success: false, message: 'Page not ready' });
         }
     } catch (e) {
-        res.json({ screenshot: lastScreenshot, error: e.message });
+        console.error('Screenshot error:', e);
+        res.json({ success: false, error: e.message });
     }
 });
 
