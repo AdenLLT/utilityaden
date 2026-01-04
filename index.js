@@ -454,18 +454,23 @@ async function startBrowser() {
                 '--disable-setuid-sandbox', 
                 '--disable-dev-shm-usage',
                 '--disable-blink-features=AutomationControlled',
-                '--window-size=1280,720'
+                '--window-size=1280,720',
+                '--disable-gpu', // Reduces memory usage on Replit
+                '--no-first-run'
             ],
-            protocolTimeout: 60000
+            // 1. HIGHER PROTOCOL TIMEOUT: Replit's debugger can hang the protocol
+            protocolTimeout: 300000 
         });
 
         const [page] = await browser.pages();
         currentPage = page;
 
+        // 2. SET HIGHER DEFAULT TIMEOUTS
+        page.setDefaultTimeout(120000);
+        page.setDefaultNavigationTimeout(120000);
+
         await page.setViewport({ width: 1280, height: 720 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-        page.on('console', msg => console.log(`[BROWSER] ${msg.text()}`));
 
         if (fs.existsSync(cookiesPath)) {
             const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
@@ -476,22 +481,25 @@ async function startBrowser() {
         async function loadAndClick() {
             console.log(`⏳ Loading Replit Workspace...`);
             try {
+                // 3. USE 'commit' STRATEGY: Don't wait for scripts to finish
+                // Replit never truly stops loading, so 'domcontentloaded' often fails.
                 await page.goto(REPL_URL, { 
-                    waitUntil: 'domcontentloaded', 
-                    timeout: 90000 
+                    waitUntil: 'commit', 
+                    timeout: 60000 
                 });
 
-                await page.waitForSelector('main', { timeout: 30000 }).catch(() => console.log("Note: 'main' selector not found, proceeding anyway..."));
+                console.log('⌛ Waiting for UI elements to appear...');
+                // Wait for the main container or a specific time
+                await sleep(20000); 
 
-                console.log('⌛ Waiting for IDE to stabilize...');
-                await sleep(15000); 
-
+                // Attempt to click to keep session active
                 await page.mouse.click(500, 300);
-                console.log('🖱️ Performed automated mouse click in editor area');
+                console.log('🖱️ Performed automated mouse click');
 
             } catch (e) {
                 console.error("⚠️ Load/Click failed:", e.message);
-                await sleep(30000);
+                // If it fails, we wait and try again
+                await sleep(10000);
                 return loadAndClick();
             }
         }
@@ -506,7 +514,6 @@ async function startBrowser() {
     } catch (err) {
         console.error("❌ Fatal Error:", err.message);
         if (browser) await browser.close();
-        console.log("Attempting restart in 10s...");
         setTimeout(startBrowser, 10000);
     }
 }
