@@ -4,7 +4,57 @@ const fs = require('fs');
 const path = require('path');
 const app = express();
 
-app.get('/', (req, res) => res.send('Keeper Active'));
+let lastScreenshot = null;
+
+app.get('/', (req, res) => {
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Keeper Active</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background: #f5f5f5;
+                }
+                h1 { color: #333; }
+                .screenshot {
+                    margin-top: 20px;
+                    border: 2px solid #ddd;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    background: white;
+                }
+                .screenshot img {
+                    width: 100%;
+                    height: auto;
+                    display: block;
+                }
+                .no-screenshot {
+                    padding: 40px;
+                    text-align: center;
+                    color: #666;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>🟢 Keeper Active</h1>
+            <p>Last screenshot taken: ${lastScreenshot ? new Date().toLocaleString() : 'No screenshot yet'}</p>
+            <div class="screenshot">
+                ${lastScreenshot 
+                    ? `<img src="data:image/png;base64,${lastScreenshot}" alt="Latest Screenshot" />` 
+                    : '<div class="no-screenshot">Waiting for first screenshot...</div>'}
+            </div>
+        </body>
+        </html>
+    `;
+    res.send(html);
+});
+
 app.listen(8080);
 
 function findChrome() {
@@ -41,7 +91,7 @@ async function startBrowser() {
 
         if (fs.existsSync(cookiesPath)) {
             const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
-            await page.setCookie(cookies);
+            await page.setCookie(...cookies);
             console.log(`✓ Cookies loaded`);
         }
 
@@ -58,6 +108,12 @@ async function startBrowser() {
                 });
 
                 console.log('✓ Click executed successfully');
+
+                // Take screenshot
+                const screenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
+                lastScreenshot = screenshot;
+                console.log('📸 Screenshot captured');
+
             } catch (e) {
                 console.error("Load failed, retrying in 30s...", e.message);
                 await sleep(30000);
