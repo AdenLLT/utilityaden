@@ -6,6 +6,7 @@ const app = express();
 
 let lastScreenshot = null;
 let currentPage = null;
+let isCapturingScreenshot = false;
 
 app.use(express.json());
 
@@ -53,6 +54,10 @@ app.get('/', (req, res) => {
                 }
                 .controls button:hover {
                     background: #27ae60;
+                }
+                .controls button:disabled {
+                    background: #555;
+                    cursor: not-allowed;
                 }
                 .controls button.secondary {
                     background: #3498db;
@@ -118,13 +123,13 @@ app.get('/', (req, res) => {
             <h1>🟢 Keeper Active - Remote Control</h1>
 
             <div class="status">
-                <p><strong>Last Check:</strong> ${lastScreenshot ? new Date().toLocaleString() : 'Waiting for initial load...'}</p>
+                <p><strong>Last Check:</strong> <span id="lastCheck">${lastScreenshot ? new Date().toLocaleString() : 'Waiting for initial load...'}</span></p>
                 <p><strong>Status:</strong> <span id="liveStatus">Browser running in stealth mode</span></p>
             </div>
 
             <div class="controls">
-                <button onclick="takeScreenshot()" class="screenshot-btn">📸 Take Screenshot</button>
-                <button onclick="refresh()">🔄 Refresh Screenshot</button>
+                <button onclick="takeScreenshot()" class="screenshot-btn" id="screenshotBtn">📸 Take Screenshot</button>
+                <button onclick="refresh()">🔄 Refresh View</button>
                 <button onclick="reload()">↻ Reload Page</button>
                 <button onclick="goBack()" class="secondary">← Back</button>
                 <button onclick="goForward()" class="secondary">→ Forward</button>
@@ -144,6 +149,8 @@ app.get('/', (req, res) => {
             </div>
 
             <script>
+                let screenshotCache = '';
+
                 function updateStatus(msg) {
                     document.getElementById('actionStatus').textContent = msg;
                 }
@@ -152,35 +159,49 @@ app.get('/', (req, res) => {
                     document.getElementById('liveStatus').textContent = msg;
                 }
 
+                function updateLastCheck() {
+                    document.getElementById('lastCheck').textContent = new Date().toLocaleString();
+                }
+
                 async function takeScreenshot() {
+                    const btn = document.getElementById('screenshotBtn');
+                    btn.disabled = true;
                     updateStatus('Taking screenshot...');
-                    const res = await fetch('/take-screenshot', { method: 'POST' });
-                    const data = await res.json();
-                    if (data.screenshot) {
-                        const img = document.getElementById('screenshot');
-                        if (img) {
-                            img.src = 'data:image/jpeg;base64,' + data.screenshot;
+
+                    try {
+                        const res = await fetch('/take-screenshot', { method: 'POST' });
+                        const data = await res.json();
+
+                        if (data.success && data.screenshot) {
+                            screenshotCache = data.screenshot;
+                            const img = document.getElementById('screenshot');
+                            if (img) {
+                                img.src = 'data:image/jpeg;base64,' + data.screenshot + '?' + Date.now();
+                            } else {
+                                location.reload();
+                            }
+                            updateStatus('Screenshot captured!');
+                            updateLastCheck();
                         } else {
-                            location.reload();
+                            updateStatus('Failed: ' + (data.message || data.error || 'Unknown error'));
                         }
-                        updateStatus('Screenshot captured!');
-                    } else {
-                        updateStatus('Failed to take screenshot');
+                    } catch (e) {
+                        updateStatus('Error: ' + e.message);
+                    } finally {
+                        btn.disabled = false;
                     }
                 }
 
                 async function refresh() {
-                    updateStatus('Refreshing screenshot...');
-                    const res = await fetch('/screenshot');
-                    const data = await res.json();
-                    if (data.screenshot) {
+                    updateStatus('Refreshing view...');
+                    if (screenshotCache) {
                         const img = document.getElementById('screenshot');
                         if (img) {
-                            img.src = 'data:image/jpeg;base64,' + data.screenshot;
-                        } else {
-                            location.reload();
+                            img.src = 'data:image/jpeg;base64,' + screenshotCache + '?' + Date.now();
                         }
-                        updateStatus('Screenshot updated');
+                        updateStatus('View refreshed');
+                    } else {
+                        await takeScreenshot();
                     }
                 }
 
@@ -211,29 +232,29 @@ app.get('/', (req, res) => {
                     const data = await res.json();
                     updateStatus(data.message || 'Clicked');
 
-                    // Auto refresh after click
-                    setTimeout(takeScreenshot, 1000);
+                    // Auto screenshot after click
+                    setTimeout(takeScreenshot, 1500);
                 }
 
                 async function reload() {
                     updateStatus('Reloading page...');
                     await fetch('/reload', {method: 'POST'});
                     updateStatus('Page reloaded');
-                    setTimeout(takeScreenshot, 2000);
+                    setTimeout(takeScreenshot, 3000);
                 }
 
                 async function goBack() {
                     updateStatus('Going back...');
                     await fetch('/back', {method: 'POST'});
                     updateStatus('Navigated back');
-                    setTimeout(takeScreenshot, 2000);
+                    setTimeout(takeScreenshot, 3000);
                 }
 
                 async function goForward() {
                     updateStatus('Going forward...');
                     await fetch('/forward', {method: 'POST'});
                     updateStatus('Navigated forward');
-                    setTimeout(takeScreenshot, 2000);
+                    setTimeout(takeScreenshot, 3000);
                 }
 
                 async function navigate() {
@@ -246,7 +267,7 @@ app.get('/', (req, res) => {
                         body: JSON.stringify({url})
                     });
                     updateStatus('Navigation complete');
-                    setTimeout(takeScreenshot, 2000);
+                    setTimeout(takeScreenshot, 3000);
                 }
 
                 async function executeJS() {
@@ -260,7 +281,7 @@ app.get('/', (req, res) => {
                     });
                     const data = await res.json();
                     updateStatus('Result: ' + JSON.stringify(data.result));
-                    setTimeout(takeScreenshot, 1000);
+                    setTimeout(takeScreenshot, 1500);
                 }
 
                 async function typeText() {
@@ -273,11 +294,11 @@ app.get('/', (req, res) => {
                         body: JSON.stringify({text})
                     });
                     updateStatus('Text typed');
-                    setTimeout(takeScreenshot, 1000);
+                    setTimeout(takeScreenshot, 1500);
                 }
 
-                // Auto-refresh every 10 seconds
-                setInterval(refresh, 10000);
+                // Auto-refresh every 15 seconds
+                setInterval(takeScreenshot, 15000);
             </script>
         </body>
         </html>
@@ -286,31 +307,35 @@ app.get('/', (req, res) => {
 });
 
 // API Endpoints
-app.get('/screenshot', async (req, res) => {
-    try {
-        res.json({ screenshot: lastScreenshot });
-    } catch (e) {
-        res.json({ screenshot: lastScreenshot, error: e.message });
-    }
-});
-
 app.post('/take-screenshot', async (req, res) => {
+    if (isCapturingScreenshot) {
+        return res.json({ success: false, message: 'Screenshot already in progress' });
+    }
+
+    isCapturingScreenshot = true;
+
     try {
         if (currentPage) {
+            console.log('📸 Attempting to capture screenshot...');
+
             const screenshot = await currentPage.screenshot({ 
                 encoding: 'base64', 
                 type: 'jpeg', 
-                quality: 60 
+                quality: 60,
+                timeout: 10000
             });
+
             lastScreenshot = screenshot;
-            console.log('📸 Manual screenshot captured');
+            console.log('✓ Screenshot captured successfully');
             res.json({ success: true, screenshot });
         } else {
             res.json({ success: false, message: 'Page not ready' });
         }
     } catch (e) {
-        console.error('Screenshot error:', e);
-        res.json({ success: false, error: e.message });
+        console.error('Screenshot error:', e.message);
+        res.json({ success: false, error: e.message, screenshot: lastScreenshot });
+    } finally {
+        isCapturingScreenshot = false;
     }
 });
 
@@ -336,7 +361,7 @@ app.post('/click', async (req, res) => {
 app.post('/reload', async (req, res) => {
     try {
         if (currentPage) {
-            await currentPage.reload({ waitUntil: 'domcontentloaded' });
+            await currentPage.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
             console.log('🔄 Page reloaded remotely');
             res.json({ success: true });
         } else {
@@ -350,7 +375,7 @@ app.post('/reload', async (req, res) => {
 app.post('/back', async (req, res) => {
     try {
         if (currentPage) {
-            await currentPage.goBack({ waitUntil: 'domcontentloaded' });
+            await currentPage.goBack({ waitUntil: 'domcontentloaded', timeout: 30000 });
             console.log('← Navigated back');
             res.json({ success: true });
         } else {
@@ -364,7 +389,7 @@ app.post('/back', async (req, res) => {
 app.post('/forward', async (req, res) => {
     try {
         if (currentPage) {
-            await currentPage.goForward({ waitUntil: 'domcontentloaded' });
+            await currentPage.goForward({ waitUntil: 'domcontentloaded', timeout: 30000 });
             console.log('→ Navigated forward');
             res.json({ success: true });
         } else {
@@ -453,11 +478,12 @@ async function startBrowser() {
                 '--disable-dev-shm-usage',
                 '--disable-blink-features=AutomationControlled',
                 '--window-size=1280,720'
-            ]
+            ],
+            protocolTimeout: 60000 // Increase protocol timeout to 60 seconds
         });
 
         const [page] = await browser.pages();
-        currentPage = page; // Make page accessible to API endpoints
+        currentPage = page;
 
         await page.setViewport({ width: 1280, height: 720 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -486,18 +512,33 @@ async function startBrowser() {
                 await page.mouse.click(500, 300);
                 console.log('🖱️ Performed automated mouse click in editor area');
 
-                const screenshot = await page.screenshot({ 
-                    encoding: 'base64', 
-                    type: 'jpeg', 
-                    quality: 60 
-                });
-                lastScreenshot = screenshot;
-                console.log('📸 Screenshot captured');
+                // Take initial screenshot with error handling
+                if (!isCapturingScreenshot) {
+                    isCapturingScreenshot = true;
+                    try {
+                        const screenshot = await page.screenshot({ 
+                            encoding: 'base64', 
+                            type: 'jpeg', 
+                            quality: 60,
+                            timeout: 10000
+                        });
+                        lastScreenshot = screenshot;
+                        console.log('📸 Screenshot captured');
+                    } catch (screenshotErr) {
+                        console.error('Screenshot failed:', screenshotErr.message);
+                    } finally {
+                        isCapturingScreenshot = false;
+                    }
+                }
 
             } catch (e) {
                 console.error("⚠️ Load/Click failed:", e.message);
-                const errSnap = await page.screenshot({ encoding: 'base64' }).catch(() => null);
-                if (errSnap) lastScreenshot = errSnap;
+
+                // Try to capture error screenshot
+                if (!isCapturingScreenshot) {
+                    const errSnap = await page.screenshot({ encoding: 'base64', timeout: 5000 }).catch(() => null);
+                    if (errSnap) lastScreenshot = errSnap;
+                }
 
                 await sleep(30000);
                 return loadAndClick();
