@@ -41,7 +41,7 @@ async function startBrowser() {
 
         if (fs.existsSync(cookiesPath)) {
             const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
-            await page.setCookie(...cookies);
+            await page.setCookie(cookies);
             console.log(`✓ Cookies loaded`);
         }
 
