@@ -5,214 +5,136 @@ const path = require('path');
 const app = express();
 
 let currentPage = null;
+const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
 
 app.use(express.json());
 
-// Dashboard UI with Remote Control
+// --- Dashboard UI ---
 app.get('/', (req, res) => {
-    const html = `
+    res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Keeper Active - Remote Control</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Keeper Active v2</title>
             <style>
-                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #1a1a1a; color: #fff; }
-                h1 { color: #2ecc71; margin: 0 0 10px 0; }
-                .status { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-                .status p { margin: 5px 0; font-size: 14px; color: #aaa; }
-                .controls { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-                .controls button { background: #2ecc71; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; }
-                .controls button:hover { background: #27ae60; }
-                .controls button:disabled { background: #555; cursor: not-allowed; }
-                .controls button.secondary { background: #3498db; }
-                .controls button.view-btn { background: #9b59b6; }
-                .controls input { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #333; color: #fff; min-width: 300px; font-size: 14px; }
-                .view-container { position: relative; border: 2px solid #444; border-radius: 8px; overflow: hidden; background: #000; min-height: 400px; }
-                .ascii-view { font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #00ff00; padding: 20px; white-space: pre; overflow-x: auto; }
-                .no-view { padding: 40px; text-align: center; color: #666; }
+                body { font-family: sans-serif; background: #121212; color: #ececec; padding: 20px; }
+                .card { background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; }
+                button { background: #00A86B; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin: 5px; }
+                input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: white; width: 300px; }
+                #log { background: #000; color: #0f0; padding: 10px; font-family: monospace; height: 200px; overflow-y: auto; margin-top: 20px; border-radius: 5px; }
             </style>
         </head>
         <body>
-            <h1>🟢 Keeper Active - Remote Control</h1>
-            <div class="status">
-                <p><strong>Last View:</strong> <span id="lastCheck">Not generated yet</span></p>
-                <p><strong>Status:</strong> <span id="liveStatus">Browser running in stealth mode</span></p>
+            <div class="card">
+                <h1>🟢 Keeper Active v2</h1>
+                <p>Status: <span id="status">Monitoring...</span></p>
+                <input type="text" id="cmd" placeholder="URL or JS Code">
+                <button onclick="doAction('/navigate', 'url')">Navigate</button>
+                <button onclick="doAction('/execute', 'code')">Exec JS</button>
+                <button onclick="fetch('/generate-view', {method:'POST'}).then(r=>r.json()).then(d=>document.getElementById('log').innerText=d.view)">Refresh View</button>
             </div>
-            <div class="controls">
-                <button onclick="generateView()" class="view-btn" id="viewBtn">🎨 Generate View</button>
-                <button onclick="reload()">↻ Reload Page</button>
-                <button onclick="goBack()" class="secondary">← Back</button>
-                <button onclick="goForward()" class="secondary">→ Forward</button>
-                <br>
-                <input type="text" id="urlInput" placeholder="Enter URL or JavaScript code">
-                <button onclick="navigate()">🌐 Navigate</button>
-                <button onclick="executeJS()">⚡ Execute JS</button>
-                <button onclick="typeText()">⌨️ Type Text</button>
-                <button onclick="clickAt()" class="secondary">🖱️ Click Coordinates</button>
-            </div>
-            <div class="view-container" id="viewContainer">
-                <div class="no-view">No view generated yet. Click "Generate View" to create one.</div>
-            </div>
+            <pre id="log">Console output will appear here...</pre>
             <script>
-                async function generateView() {
-                    const btn = document.getElementById('viewBtn');
-                    btn.disabled = true;
-                    try {
-                        const res = await fetch('/generate-view', { method: 'POST' });
-                        const data = await res.json();
-                        if (data.success) {
-                            document.getElementById('viewContainer').innerHTML = '<div class="ascii-view">' + data.view + '</div>';
-                            document.getElementById('lastCheck').textContent = new Date().toLocaleString();
-                        }
-                    } finally { btn.disabled = false; }
-                }
-                async function navigate() {
-                    const url = document.getElementById('urlInput').value;
-                    await fetch('/navigate', {
+                async function doAction(path, key) {
+                    const val = document.getElementById('cmd').value;
+                    await fetch(path, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({url})
+                        body: JSON.stringify({[key]: val})
                     });
+                    alert('Action sent');
                 }
-                async function clickAt() {
-                    const coords = document.getElementById('urlInput').value;
-                    const [x, y] = coords.split(',').map(n => parseInt(n.trim()));
-                    await fetch('/click', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({x, y})
-                    });
-                }
-                // Other functions (reload, back, forward, executeJS, typeText) follow the same fetch pattern...
             </script>
         </body>
         </html>
-    `;
-    res.send(html);
+    `);
 });
 
-// API Endpoints
+// --- API Endpoints ---
 app.post('/generate-view', async (req, res) => {
-    try {
-        if (currentPage) {
-            const pageInfo = await currentPage.evaluate(() => ({
-                title: document.title,
-                url: window.location.href,
-                width: window.innerWidth,
-                height: window.innerHeight,
-                bodyText: document.body ? document.body.innerText.substring(0, 500) : 'No content'
-            }));
-            const width = 80;
-            const height = 30;
-            let asciiView = `═`.repeat(width) + `\nURL: ${pageInfo.url}\nTITLE: ${pageInfo.title}\nVIEWPORT: ${pageInfo.width}x${pageInfo.height}\n` + `═`.repeat(width) + `\n\n`;
-            for (let y = 0; y < height; y++) {
-                let line = '';
-                for (let x = 0; x < width; x++) {
-                    const val = Math.random();
-                    if (val > 0.8) line += '█';
-                    else if (val > 0.6) line += '▒';
-                    else if (val > 0.4) line += '░';
-                    else line += ' ';
-                }
-                asciiView += line + '\n';
-            }
-            res.json({ success: true, view: asciiView });
-        } else { res.json({ success: false, message: 'Page not ready' }); }
-    } catch (e) { res.json({ success: false, error: e.message }); }
+    if (!currentPage) return res.json({success: false});
+    const txt = await currentPage.evaluate(() => document.body.innerText.substring(0, 800));
+    res.json({ success: true, view: `URL: ${currentPage.url()}\n\n${txt}` });
 });
 
 app.post('/navigate', async (req, res) => {
-    try {
-        const { url } = req.body;
-        if (currentPage && url) {
-            await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(e => console.log("Nav check: " + e.message));
-            res.json({ success: true });
-        }
-    } catch (e) { res.json({ success: false, error: e.message }); }
+    const { url } = req.body;
+    if (currentPage) await currentPage.goto(url, {waitUntil: 'domcontentloaded'});
+    res.json({success: true});
 });
 
-app.post('/click', async (req, res) => {
-    try {
-        const { x, y } = req.body;
-        if (currentPage) {
-            await currentPage.mouse.click(x, y);
-            res.json({ success: true });
-        }
-    } catch (e) { res.json({ success: false, error: e.message }); }
+app.post('/execute', async (req, res) => {
+    const { code } = req.body;
+    const result = await currentPage.evaluate((c) => eval(c), code);
+    res.json({success: true, result});
 });
 
-// Start Browser Logic
-function findChrome() {
-    const paths = ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', process.env.CHROME_PATH].filter(Boolean);
-    for (const p of paths) { if (fs.existsSync(p)) return p; }
-    throw new Error('Chrome not found.');
-}
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// --- Browser Logic ---
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function startBrowser() {
     const userDataDir = path.join(__dirname, 'chrome_user_data');
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
-    const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
-    const RELOAD_INTERVAL = 5 * 60 * 1000; 
+
+    console.log("🚀 Launching Stealth Browser...");
 
     try {
-        const chromePath = findChrome();
         const browser = await puppeteer.launch({
             headless: "new",
-            executablePath: chromePath,
+            executablePath: '/usr/bin/chromium-browser', // Standard for Replit
             userDataDir: userDataDir,
-            args: [
-                '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
-                '--disable-blink-features=AutomationControlled', '--window-size=1280,720',
-                '--disable-gpu', '--no-first-run'
-            ],
-            protocolTimeout: 300000 
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+            protocolTimeout: 300000
         });
 
         const [page] = await browser.pages();
         currentPage = page;
-        page.setDefaultTimeout(120000);
-
         await page.setViewport({ width: 1280, height: 720 });
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
         if (fs.existsSync(cookiesPath)) {
             const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
             await page.setCookie(...cookies);
+            console.log("🍪 Session cookies loaded.");
         }
 
-        async function loadAndClick() {
-            console.log(`⏳ Loading Replit Workspace...`);
+        async function maintainSession() {
+            // 1. Randomize the wait to avoid "9-hour" pattern detection
+            const jitter = Math.floor(Math.random() * 60000); // Up to 1 min random delay
+            console.log(`⏳ Next refresh in ${5} minutes (+${jitter/1000}s jitter)...`);
+
             try {
-                // Use domcontentloaded but catch the timeout as a success
-                await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 50000 });
+                console.log("🔄 Refreshing Replit Workspace...");
+                await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+                // 2. Human-like movement
+                await sleep(5000 + Math.random() * 5000);
+                const x = 400 + Math.random() * 200;
+                const y = 300 + Math.random() * 200;
+                await page.mouse.click(x, y);
+                console.log(`🖱️ Clicked at (${Math.round(x)}, ${Math.round(y)})`);
+
+                // 3. Check for "Login" or "Logged Out" text
+                const isLoggedOut = await page.evaluate(() => {
+                    return document.body.innerText.includes('Log in') || document.body.innerText.includes('Sign up');
+                });
+                if (isLoggedOut) console.log("⚠️ WARNING: It looks like you are logged out!");
+
             } catch (e) {
-                if (e.message.includes('timeout')) {
-                    console.log("⚠️ Page load timed out (expected on Replit), proceeding...");
-                } else {
-                    throw e;
-                }
+                console.log("⚠️ Minor error during refresh (normal for Replit):", e.message);
             }
 
-            await sleep(20000); 
-            await page.mouse.click(500, 300);
-            console.log('🖱️ Performed automated mouse click');
+            setTimeout(maintainSession, (5 * 60 * 1000) + jitter);
         }
 
-        await loadAndClick();
-
-        setInterval(async () => {
-            console.log("🔄 Scheduled refresh...");
-            await loadAndClick().catch(e => console.log("Refresh error: " + e.message));
-        }, RELOAD_INTERVAL);
+        await maintainSession();
 
     } catch (err) {
-        console.error("❌ Fatal Error:", err.message);
+        console.error("❌ Fatal Browser Error:", err.message);
         setTimeout(startBrowser, 10000);
     }
 }
 
-app.listen(8080, () => console.log('🌐 Dashboard on port 8080'));
-startBrowser();
+app.listen(8080, () => {
+    console.log('🌐 Dashboard: http://localhost:8080');
+    startBrowser();
+});
