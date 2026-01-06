@@ -29,18 +29,21 @@ app.get('/', (req, res) => {
                 .controls button.view-btn { background: #9b59b6; }
                 .controls input { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #333; color: #fff; min-width: 300px; font-size: 14px; }
                 .view-container { position: relative; border: 2px solid #444; border-radius: 8px; overflow: hidden; background: #000; min-height: 400px; }
-                .ascii-view { font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #00ff00; padding: 20px; white-space: pre; overflow-x: auto; }
+                .screenshot-view { position: relative; width: 100%; cursor: crosshair; }
+                .screenshot-view img { width: 100%; display: block; }
                 .no-view { padding: 40px; text-align: center; color: #666; }
+                .click-indicator { position: absolute; width: 20px; height: 20px; border: 2px solid #ff0000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); animation: pulse 0.5s ease-out; }
+                @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
             </style>
         </head>
         <body>
             <h1>🟢 Keeper Active - Remote Control</h1>
             <div class="status">
-                <p><strong>Last View:</strong> <span id="lastCheck">Not generated yet</span></p>
+                <p><strong>Last Screenshot:</strong> <span id="lastCheck">Not taken yet</span></p>
                 <p><strong>Status:</strong> <span id="liveStatus">Browser running in stealth mode</span></p>
             </div>
             <div class="controls">
-                <button onclick="generateView()" class="view-btn" id="viewBtn">🎨 Generate View</button>
+                <button onclick="takeScreenshot()" class="view-btn" id="viewBtn">📸 Take Screenshot</button>
                 <button onclick="reload()">↻ Reload Page</button>
                 <button onclick="goBack()" class="secondary">← Back</button>
                 <button onclick="goForward()" class="secondary">→ Forward</button>
@@ -52,21 +55,51 @@ app.get('/', (req, res) => {
                 <button onclick="clickAt()" class="secondary">🖱️ Click Coordinates</button>
             </div>
             <div class="view-container" id="viewContainer">
-                <div class="no-view">No view generated yet. Click "Generate View" to create one.</div>
+                <div class="no-view">No screenshot taken yet. Click "Take Screenshot" to capture the browser view.</div>
             </div>
             <script>
-                async function generateView() {
+                let screenshotScale = 1;
+
+                async function takeScreenshot() {
                     const btn = document.getElementById('viewBtn');
                     btn.disabled = true;
                     try {
-                        const res = await fetch('/generate-view', { method: 'POST' });
+                        const res = await fetch('/take-screenshot', { method: 'POST' });
                         const data = await res.json();
                         if (data.success) {
-                            document.getElementById('viewContainer').innerHTML = '<div class="ascii-view">' + data.view + '</div>';
+                            const container = document.getElementById('viewContainer');
+                            container.innerHTML = '<div class="screenshot-view" id="screenshotView"><img id="screenshotImg" src="data:image/png;base64,' + data.screenshot + '" /></div>';
                             document.getElementById('lastCheck').textContent = new Date().toLocaleString();
+
+                            screenshotScale = data.scale || 1;
+
+                            // Add click handler to screenshot
+                            document.getElementById('screenshotView').addEventListener('click', handleScreenshotClick);
                         }
                     } finally { btn.disabled = false; }
                 }
+
+                async function handleScreenshotClick(e) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = Math.round((e.clientX - rect.left) * screenshotScale);
+                    const y = Math.round((e.clientY - rect.top) * screenshotScale);
+
+                    // Visual feedback
+                    const indicator = document.createElement('div');
+                    indicator.className = 'click-indicator';
+                    indicator.style.left = (e.clientX - rect.left) + 'px';
+                    indicator.style.top = (e.clientY - rect.top) + 'px';
+                    e.currentTarget.appendChild(indicator);
+                    setTimeout(() => indicator.remove(), 500);
+
+                    // Send click to server
+                    await fetch('/click', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({x, y})
+                    });
+                }
+
                 async function navigate() {
                     const url = document.getElementById('urlInput').value;
                     await fetch('/navigate', {
@@ -75,6 +108,7 @@ app.get('/', (req, res) => {
                         body: JSON.stringify({url})
                     });
                 }
+
                 async function clickAt() {
                     const coords = document.getElementById('urlInput').value;
                     const [x, y] = coords.split(',').map(n => parseInt(n.trim()));
@@ -84,7 +118,36 @@ app.get('/', (req, res) => {
                         body: JSON.stringify({x, y})
                     });
                 }
-                // Other functions (reload, back, forward, executeJS, typeText) follow the same fetch pattern...
+
+                async function reload() {
+                    await fetch('/reload', { method: 'POST' });
+                }
+
+                async function goBack() {
+                    await fetch('/back', { method: 'POST' });
+                }
+
+                async function goForward() {
+                    await fetch('/forward', { method: 'POST' });
+                }
+
+                async function executeJS() {
+                    const code = document.getElementById('urlInput').value;
+                    await fetch('/execute-js', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({code})
+                    });
+                }
+
+                async function typeText() {
+                    const text = document.getElementById('urlInput').value;
+                    await fetch('/type-text', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({text})
+                    });
+                }
             </script>
         </body>
         </html>
@@ -93,33 +156,29 @@ app.get('/', (req, res) => {
 });
 
 // API Endpoints
-app.post('/generate-view', async (req, res) => {
+app.post('/take-screenshot', async (req, res) => {
     try {
         if (currentPage) {
-            const pageInfo = await currentPage.evaluate(() => ({
-                title: document.title,
-                url: window.location.href,
-                width: window.innerWidth,
-                height: window.innerHeight,
-                bodyText: document.body ? document.body.innerText.substring(0, 500) : 'No content'
-            }));
-            const width = 80;
-            const height = 30;
-            let asciiView = `═`.repeat(width) + `\nURL: ${pageInfo.url}\nTITLE: ${pageInfo.title}\nVIEWPORT: ${pageInfo.width}x${pageInfo.height}\n` + `═`.repeat(width) + `\n\n`;
-            for (let y = 0; y < height; y++) {
-                let line = '';
-                for (let x = 0; x < width; x++) {
-                    const val = Math.random();
-                    if (val > 0.8) line += '█';
-                    else if (val > 0.6) line += '▒';
-                    else if (val > 0.4) line += '░';
-                    else line += ' ';
-                }
-                asciiView += line + '\n';
-            }
-            res.json({ success: true, view: asciiView });
-        } else { res.json({ success: false, message: 'Page not ready' }); }
-    } catch (e) { res.json({ success: false, error: e.message }); }
+            const screenshot = await currentPage.screenshot({ 
+                encoding: 'base64',
+                type: 'png',
+                fullPage: false
+            });
+
+            const viewport = await currentPage.viewport();
+
+            res.json({ 
+                success: true, 
+                screenshot: screenshot,
+                scale: 1,
+                viewport: viewport
+            });
+        } else { 
+            res.json({ success: false, message: 'Page not ready' }); 
+        }
+    } catch (e) { 
+        res.json({ success: false, error: e.message }); 
+    }
 });
 
 app.post('/navigate', async (req, res) => {
@@ -136,7 +195,55 @@ app.post('/click', async (req, res) => {
     try {
         const { x, y } = req.body;
         if (currentPage) {
+            console.log(`🖱️ Clicking at coordinates: (${x}, ${y})`);
             await currentPage.mouse.click(x, y);
+            res.json({ success: true });
+        }
+    } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post('/reload', async (req, res) => {
+    try {
+        if (currentPage) {
+            await currentPage.reload({ waitUntil: 'domcontentloaded' });
+            res.json({ success: true });
+        }
+    } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post('/back', async (req, res) => {
+    try {
+        if (currentPage) {
+            await currentPage.goBack({ waitUntil: 'domcontentloaded' });
+            res.json({ success: true });
+        }
+    } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post('/forward', async (req, res) => {
+    try {
+        if (currentPage) {
+            await currentPage.goForward({ waitUntil: 'domcontentloaded' });
+            res.json({ success: true });
+        }
+    } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post('/execute-js', async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (currentPage && code) {
+            const result = await currentPage.evaluate(code);
+            res.json({ success: true, result });
+        }
+    } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post('/type-text', async (req, res) => {
+    try {
+        const { text } = req.body;
+        if (currentPage && text) {
+            await currentPage.keyboard.type(text);
             res.json({ success: true });
         }
     } catch (e) { res.json({ success: false, error: e.message }); }
@@ -150,8 +257,6 @@ function findChrome() {
 }
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// ... existing imports and setup ...
 
 async function startBrowser() {
     const userDataDir = path.join(__dirname, 'chrome_user_data');
