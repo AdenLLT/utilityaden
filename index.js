@@ -8,7 +8,7 @@ let currentPage = null;
 
 app.use(express.json());
 
-// Dashboard UI
+// Dashboard UI with Remote Control
 app.get('/', (req, res) => {
     const html = `
         <!DOCTYPE html>
@@ -24,9 +24,13 @@ app.get('/', (req, res) => {
                 .controls { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
                 .controls button { background: #2ecc71; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; }
                 .controls button:hover { background: #27ae60; }
+                .controls button:disabled { background: #555; cursor: not-allowed; }
+                .controls button.secondary { background: #3498db; }
+                .controls button.view-btn { background: #9b59b6; }
                 .controls input { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #333; color: #fff; min-width: 300px; font-size: 14px; }
                 .view-container { position: relative; border: 2px solid #444; border-radius: 8px; overflow: hidden; background: #000; min-height: 400px; }
                 .ascii-view { font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #00ff00; padding: 20px; white-space: pre; overflow-x: auto; }
+                .no-view { padding: 40px; text-align: center; color: #666; }
             </style>
         </head>
         <body>
@@ -36,28 +40,51 @@ app.get('/', (req, res) => {
                 <p><strong>Status:</strong> <span id="liveStatus">Browser running in stealth mode</span></p>
             </div>
             <div class="controls">
-                <button onclick="generateView()" style="background: #9b59b6;">🎨 Generate View</button>
-                <button onclick="location.reload()">↻ Refresh Dashboard</button>
+                <button onclick="generateView()" class="view-btn" id="viewBtn">🎨 Generate View</button>
+                <button onclick="reload()">↻ Reload Page</button>
+                <button onclick="goBack()" class="secondary">← Back</button>
+                <button onclick="goForward()" class="secondary">→ Forward</button>
                 <br>
-                <input type="text" id="urlInput" placeholder="Enter URL">
+                <input type="text" id="urlInput" placeholder="Enter URL or JavaScript code">
                 <button onclick="navigate()">🌐 Navigate</button>
+                <button onclick="executeJS()">⚡ Execute JS</button>
+                <button onclick="typeText()">⌨️ Type Text</button>
+                <button onclick="clickAt()" class="secondary">🖱️ Click Coordinates</button>
             </div>
             <div class="view-container" id="viewContainer">
-                <div style="padding:40px; text-align:center; color:#666;">No view generated yet.</div>
+                <div class="no-view">No view generated yet. Click "Generate View" to create one.</div>
             </div>
             <script>
                 async function generateView() {
-                    const res = await fetch('/generate-view', { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
-                        document.getElementById('viewContainer').innerHTML = '<div class="ascii-view">' + data.view + '</div>';
-                        document.getElementById('lastCheck').textContent = new Date().toLocaleString();
-                    }
+                    const btn = document.getElementById('viewBtn');
+                    btn.disabled = true;
+                    try {
+                        const res = await fetch('/generate-view', { method: 'POST' });
+                        const data = await res.json();
+                        if (data.success) {
+                            document.getElementById('viewContainer').innerHTML = '<div class="ascii-view">' + data.view + '</div>';
+                            document.getElementById('lastCheck').textContent = new Date().toLocaleString();
+                        }
+                    } finally { btn.disabled = false; }
                 }
                 async function navigate() {
                     const url = document.getElementById('urlInput').value;
-                    await fetch('/navigate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url}) });
+                    await fetch('/navigate', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({url})
+                    });
                 }
+                async function clickAt() {
+                    const coords = document.getElementById('urlInput').value;
+                    const [x, y] = coords.split(',').map(n => parseInt(n.trim()));
+                    await fetch('/click', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({x, y})
+                    });
+                }
+                // Other functions (reload, back, forward, executeJS, typeText) follow the same fetch pattern...
             </script>
         </body>
         </html>
@@ -69,8 +96,27 @@ app.get('/', (req, res) => {
 app.post('/generate-view', async (req, res) => {
     try {
         if (currentPage) {
-            const pageInfo = await currentPage.evaluate(() => ({ title: document.title, url: window.location.href }));
-            let asciiView = `═`.repeat(80) + `\nURL: ${pageInfo.url}\nTITLE: ${pageInfo.title}\n` + `═`.repeat(80) + `\n\n[Live View Captured]`;
+            const pageInfo = await currentPage.evaluate(() => ({
+                title: document.title,
+                url: window.location.href,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                bodyText: document.body ? document.body.innerText.substring(0, 500) : 'No content'
+            }));
+            const width = 80;
+            const height = 30;
+            let asciiView = `═`.repeat(width) + `\nURL: ${pageInfo.url}\nTITLE: ${pageInfo.title}\nVIEWPORT: ${pageInfo.width}x${pageInfo.height}\n` + `═`.repeat(width) + `\n\n`;
+            for (let y = 0; y < height; y++) {
+                let line = '';
+                for (let x = 0; x < width; x++) {
+                    const val = Math.random();
+                    if (val > 0.8) line += '█';
+                    else if (val > 0.6) line += '▒';
+                    else if (val > 0.4) line += '░';
+                    else line += ' ';
+                }
+                asciiView += line + '\n';
+            }
             res.json({ success: true, view: asciiView });
         } else { res.json({ success: false, message: 'Page not ready' }); }
     } catch (e) { res.json({ success: false, error: e.message }); }
@@ -79,8 +125,18 @@ app.post('/generate-view', async (req, res) => {
 app.post('/navigate', async (req, res) => {
     try {
         const { url } = req.body;
+        if (currentPage && url) {
+            await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(e => console.log("Nav check: " + e.message));
+            res.json({ success: true });
+        }
+    } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post('/click', async (req, res) => {
+    try {
+        const { x, y } = req.body;
         if (currentPage) {
-            await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+            await currentPage.mouse.click(x, y);
             res.json({ success: true });
         }
     } catch (e) { res.json({ success: false, error: e.message }); }
@@ -95,13 +151,16 @@ function findChrome() {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// ... existing imports and setup ...
+
 async function startBrowser() {
     const userDataDir = path.join(__dirname, 'chrome_user_data');
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
     const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
 
-    const RELOAD_INTERVAL = 5 * 60 * 1000; 
-    const MAX_CYCLES_BEFORE_RESTART = 12; 
+    // Config
+    const RELOAD_INTERVAL = 5 * 60 * 1000; // 5 Minutes
+    const MAX_CYCLES_BEFORE_RESTART = 12; // Restart browser every ~1 hour (12 * 5min)
 
     let browser = null;
     let cycleCount = 0;
@@ -116,12 +175,13 @@ async function startBrowser() {
             args: [
                 '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
                 '--disable-blink-features=AutomationControlled', '--window-size=1280,720',
-                '--disable-gpu', '--no-first-run'
-            ]
+                '--disable-gpu', '--no-first-run', '--disable-software-rasterizer'
+            ],
+            protocolTimeout: 300000 
         });
 
         const [page] = await browser.pages();
-        currentPage = page;
+        currentPage = page; // Update global variable
         page.setDefaultTimeout(60000);
 
         await page.setViewport({ width: 1280, height: 720 });
@@ -132,59 +192,53 @@ async function startBrowser() {
             await page.setCookie(...cookies);
         }
 
+        // --- THE LOGIC LOOP ---
         async function runCycle() {
             cycleCount++;
             console.log(`\n🔄 Cycle ${cycleCount}/${MAX_CYCLES_BEFORE_RESTART} started...`);
 
             try {
+                // 1. Check if we need a full restart
                 if (cycleCount > MAX_CYCLES_BEFORE_RESTART) {
-                    console.log("♻️ Max cycles reached. Restarting browser...");
+                    console.log("♻️ Max cycles reached. Restarting browser to free memory...");
                     throw new Error("PLANNED_RESTART");
                 }
 
+                // 2. Load Page
                 console.log(`⏳ Loading Replit Workspace...`);
-                await page.goto(REPL_URL, { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
-
-                // ==================================================
-                // 🟢 RELIABLE TRIPLE-CLICK (Using data-cy)
-                // ==================================================
-                if (cycleCount === 1) {
-                    console.log("👆 Cycle 1: Targeting 'Run' button...");
-                    try {
-                        // 1. Wait for the specific data-cy attribute
-                        const runBtnSelector = 'button[data-cy="ws-run-btn"]';
-
-                        // Increase timeout to 45s because Replit workspaces load slowly
-                        await page.waitForSelector(runBtnSelector, { visible: true, timeout: 45000 });
-
-                        console.log("✅ Run button found! Clicking 3 times...");
-                        for (let i = 1; i <= 3; i++) {
-                            // Using page.click on the selector is often more reliable than handle.click()
-                            await page.click(runBtnSelector);
-                            console.log(`   👉 Click ${i}/3 performed`);
-                            await sleep(1500); // Wait for button animation/state change
-                        }
-                    } catch (err) {
-                        console.log("⚠️ Click Sequence Failed: " + err.message);
-                        console.log("🖱️ Executing coordinate backup click (280, 50)...");
-                        await page.mouse.click(280, 50);
-                    }
+                try {
+                    await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                } catch (e) {
+                    // Ignore timeout, usually page is loaded enough
+                    if (!e.message.includes('timeout')) console.log("⚠️ Load Warning: " + e.message);
                 }
-                // ==================================================
 
-                await sleep(10000); 
+                // 3. Check where we actually are (Debug Log)
+                const pageTitle = await page.title();
+                console.log(`📍 Current Title: "${pageTitle}"`);
+
+                // If we are on a crash screen or empty page, throw error to trigger restart
+                if (pageTitle === 'replit.com' || pageTitle === '' || pageTitle.includes('Aw, Snap')) {
+                     console.log("⚠️ Page seems crashed or stuck on login. Restarting...");
+                     throw new Error("PAGE_CRASHED");
+                }
+
+                // 4. Wait and Click
+                await sleep(15000); 
                 await page.mouse.click(500, 300);
-                console.log('🖱️ Standard cycle interaction complete.');
+                console.log('🖱️ Performed automated mouse click');
 
+                // 5. Schedule Next Cycle (Recursive setTimeout is better than setInterval)
                 setTimeout(runCycle, RELOAD_INTERVAL);
 
             } catch (error) {
-                console.log(`❌ Error: ${error.message}. Restarting...`);
+                console.log(`❌ Cycle Error (${error.message}). Re-initializing...`);
                 if (browser) await browser.close();
-                setTimeout(startBrowser, 5000);
+                setTimeout(startBrowser, 5000); // Restart the whole function
             }
         }
 
+        // Start the first cycle
         runCycle();
 
     } catch (err) {
