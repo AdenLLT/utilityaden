@@ -58,7 +58,7 @@ app.get('/', (req, res) => {
                 <div class="no-view">No screenshot taken yet. Click "Take Screenshot" to capture the browser view.</div>
             </div>
             <script>
-                let screenshotScale = 1;
+                let screenshotData = null;
 
                 async function takeScreenshot() {
                     const btn = document.getElementById('viewBtn');
@@ -67,11 +67,10 @@ app.get('/', (req, res) => {
                         const res = await fetch('/take-screenshot', { method: 'POST' });
                         const data = await res.json();
                         if (data.success) {
+                            screenshotData = data;
                             const container = document.getElementById('viewContainer');
                             container.innerHTML = '<div class="screenshot-view" id="screenshotView"><img id="screenshotImg" src="data:image/png;base64,' + data.screenshot + '" /></div>';
                             document.getElementById('lastCheck').textContent = new Date().toLocaleString();
-
-                            screenshotScale = data.scale || 1;
 
                             // Add click handler to screenshot
                             document.getElementById('screenshotView').addEventListener('click', handleScreenshotClick);
@@ -80,15 +79,26 @@ app.get('/', (req, res) => {
                 }
 
                 async function handleScreenshotClick(e) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = Math.round((e.clientX - rect.left) * screenshotScale);
-                    const y = Math.round((e.clientY - rect.top) * screenshotScale);
+                    const img = document.getElementById('screenshotImg');
+                    const rect = img.getBoundingClientRect();
+
+                    // Calculate click position relative to the image
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+
+                    // Calculate scale between displayed image and actual viewport
+                    const scaleX = screenshotData.viewport.width / rect.width;
+                    const scaleY = screenshotData.viewport.height / rect.height;
+
+                    // Calculate actual coordinates in the browser
+                    const actualX = Math.round(clickX * scaleX);
+                    const actualY = Math.round(clickY * scaleY);
 
                     // Visual feedback
                     const indicator = document.createElement('div');
                     indicator.className = 'click-indicator';
-                    indicator.style.left = (e.clientX - rect.left) + 'px';
-                    indicator.style.top = (e.clientY - rect.top) + 'px';
+                    indicator.style.left = clickX + 'px';
+                    indicator.style.top = clickY + 'px';
                     e.currentTarget.appendChild(indicator);
                     setTimeout(() => indicator.remove(), 500);
 
@@ -96,7 +106,7 @@ app.get('/', (req, res) => {
                     await fetch('/click', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({x, y})
+                        body: JSON.stringify({x: actualX, y: actualY})
                     });
                 }
 
@@ -170,7 +180,6 @@ app.post('/take-screenshot', async (req, res) => {
             res.json({ 
                 success: true, 
                 screenshot: screenshot,
-                scale: 1,
                 viewport: viewport
             });
         } else { 
@@ -196,10 +205,36 @@ app.post('/click', async (req, res) => {
         const { x, y } = req.body;
         if (currentPage) {
             console.log(`🖱️ Clicking at coordinates: (${x}, ${y})`);
-            await currentPage.mouse.click(x, y);
+
+            // First, check if we're dealing with an iframe situation
+            const frames = currentPage.frames();
+            console.log(`📊 Total frames on page: ${frames.length}`);
+
+            // Try to click at the element level for better accuracy
+            try {
+                await currentPage.evaluate((clickX, clickY) => {
+                    // Find element at the exact coordinates
+                    const element = document.elementFromPoint(clickX, clickY);
+                    if (element) {
+                        console.log('Found element:', element.tagName, element.className);
+                        element.click();
+                        return true;
+                    }
+                    return false;
+                }, x, y);
+                console.log('✅ Click executed via element.click()');
+            } catch (evalError) {
+                console.log('⚠️ Element click failed, using mouse click fallback');
+                // Fallback to mouse click
+                await currentPage.mouse.click(x, y);
+            }
+
             res.json({ success: true });
         }
-    } catch (e) { res.json({ success: false, error: e.message }); }
+    } catch (e) { 
+        console.error('❌ Click error:', e.message);
+        res.json({ success: false, error: e.message }); 
+    }
 });
 
 app.post('/reload', async (req, res) => {
