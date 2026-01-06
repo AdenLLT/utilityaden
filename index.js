@@ -151,8 +151,6 @@ function findChrome() {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ... existing imports and setup ...
-
 async function startBrowser() {
     const userDataDir = path.join(__dirname, 'chrome_user_data');
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
@@ -223,12 +221,43 @@ async function startBrowser() {
                      throw new Error("PAGE_CRASHED");
                 }
 
-                // 4. Wait and Click
+                // ==========================================
+                // 🟢 NEW: CLICK BUTTON 3 TIMES ON 1ST CYCLE
+                // ==========================================
+                if (cycleCount === 1) {
+                    console.log("👆 First cycle detected: Attempting triple-click sequence...");
+                    try {
+                        // Wait 5 seconds for React/UI to fully hydrate
+                        await sleep(5000);
+
+                        // XPath targeting the BUTTON containing the SVG (more stable than targeting the SVG path)
+                        const targetXPath = '/html/body/div[1]/div[1]/div[1]/div/div/div[1]/div/div[2]/div/button';
+
+                        // Wait until button is actually in the DOM
+                        await page.waitForXPath(targetXPath, { timeout: 10000 });
+
+                        const elements = await page.$x(targetXPath);
+                        if (elements.length > 0) {
+                            for (let i = 1; i <= 3; i++) {
+                                await elements[0].click();
+                                console.log(`   👉 Click ${i}/3 performed on target button`);
+                                await sleep(1000); // 1 second delay between clicks
+                            }
+                        } else {
+                            console.log("⚠️ Target button not found via XPath.");
+                        }
+                    } catch (err) {
+                        console.log("⚠️ Error executing triple-click: " + err.message);
+                    }
+                }
+                // ==========================================
+
+                // 4. Wait and Click (General Interaction)
                 await sleep(15000); 
                 await page.mouse.click(500, 300);
                 console.log('🖱️ Performed automated mouse click');
 
-                // 5. Schedule Next Cycle (Recursive setTimeout is better than setInterval)
+                // 5. Schedule Next Cycle
                 setTimeout(runCycle, RELOAD_INTERVAL);
 
             } catch (error) {
