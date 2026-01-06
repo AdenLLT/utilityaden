@@ -84,7 +84,6 @@ app.get('/', (req, res) => {
                         body: JSON.stringify({x, y})
                     });
                 }
-                // Other functions (reload, back, forward, executeJS, typeText) follow the same fetch pattern...
             </script>
         </body>
         </html>
@@ -156,9 +155,8 @@ async function startBrowser() {
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
     const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
 
-    // Config
-    const RELOAD_INTERVAL = 5 * 60 * 1000; // 5 Minutes
-    const MAX_CYCLES_BEFORE_RESTART = 12; // Restart browser every ~1 hour (12 * 5min)
+    const RELOAD_INTERVAL = 5 * 60 * 1000; 
+    const MAX_CYCLES_BEFORE_RESTART = 12; 
 
     let browser = null;
     let cycleCount = 0;
@@ -179,7 +177,7 @@ async function startBrowser() {
         });
 
         const [page] = await browser.pages();
-        currentPage = page; // Update global variable
+        currentPage = page; 
         page.setDefaultTimeout(60000);
 
         await page.setViewport({ width: 1280, height: 720 });
@@ -190,84 +188,77 @@ async function startBrowser() {
             await page.setCookie(...cookies);
         }
 
-        // --- THE LOGIC LOOP ---
         async function runCycle() {
             cycleCount++;
             console.log(`\n🔄 Cycle ${cycleCount}/${MAX_CYCLES_BEFORE_RESTART} started...`);
 
             try {
-                // 1. Check if we need a full restart
                 if (cycleCount > MAX_CYCLES_BEFORE_RESTART) {
-                    console.log("♻️ Max cycles reached. Restarting browser to free memory...");
+                    console.log("♻️ Max cycles reached. Restarting browser...");
                     throw new Error("PLANNED_RESTART");
                 }
 
-                // 2. Load Page
                 console.log(`⏳ Loading Replit Workspace...`);
                 try {
                     await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
                 } catch (e) {
-                    // Ignore timeout, usually page is loaded enough
                     if (!e.message.includes('timeout')) console.log("⚠️ Load Warning: " + e.message);
                 }
 
-                // 3. Check where we actually are (Debug Log)
                 const pageTitle = await page.title();
                 console.log(`📍 Current Title: "${pageTitle}"`);
 
-                // If we are on a crash screen or empty page, throw error to trigger restart
                 if (pageTitle === 'replit.com' || pageTitle === '' || pageTitle.includes('Aw, Snap')) {
-                     console.log("⚠️ Page seems crashed or stuck on login. Restarting...");
+                     console.log("⚠️ Page seems crashed or stuck. Restarting...");
                      throw new Error("PAGE_CRASHED");
                 }
 
                 // ==========================================
-                // 🟢 NEW: CLICK BUTTON 3 TIMES ON 1ST CYCLE
+                // 🟢 OPTIMIZED: TRIPLE-CLICK SEQUENCE (Cycle 1 Only)
                 // ==========================================
                 if (cycleCount === 1) {
-                    console.log("👆 First cycle detected: Attempting triple-click sequence...");
+                    console.log("👆 First cycle detected: Waiting for UI to stabilize...");
                     try {
-                        // Wait 5 seconds for React/UI to fully hydrate
-                        await sleep(5000);
+                        // 1. Wait until "Loading..." disappears from title (up to 30s)
+                        await page.waitForFunction(
+                            () => !document.title.includes("Loading..."),
+                            { timeout: 30000 }
+                        ).catch(() => console.log("🕒 Title still says loading, proceeding with attempt..."));
 
-                        // XPath targeting the BUTTON containing the SVG (more stable than targeting the SVG path)
                         const targetXPath = '/html/body/div[1]/div[1]/div[1]/div/div/div[1]/div/div[2]/div/button';
 
-                        // Wait until button is actually in the DOM
-                        await page.waitForXPath(targetXPath, { timeout: 10000 });
+                        // 2. Wait for button visibility with 30s timeout
+                        console.log("🔍 Searching for target button...");
+                        await page.waitForXPath(targetXPath, { visible: true, timeout: 30000 });
 
                         const elements = await page.$x(targetXPath);
                         if (elements.length > 0) {
                             for (let i = 1; i <= 3; i++) {
+                                await elements[0].evaluate(el => el.scrollIntoView());
                                 await elements[0].click();
-                                console.log(`   👉 Click ${i}/3 performed on target button`);
-                                await sleep(1000); // 1 second delay between clicks
+                                console.log(`   👉 Click ${i}/3 performed successfully`);
+                                await sleep(1500); 
                             }
-                        } else {
-                            console.log("⚠️ Target button not found via XPath.");
                         }
                     } catch (err) {
-                        console.log("⚠️ Error executing triple-click: " + err.message);
+                        console.log("⚠️ Click Sequence Failed: " + err.message);
                     }
                 }
                 // ==========================================
 
-                // 4. Wait and Click (General Interaction)
                 await sleep(15000); 
                 await page.mouse.click(500, 300);
                 console.log('🖱️ Performed automated mouse click');
 
-                // 5. Schedule Next Cycle
                 setTimeout(runCycle, RELOAD_INTERVAL);
 
             } catch (error) {
                 console.log(`❌ Cycle Error (${error.message}). Re-initializing...`);
                 if (browser) await browser.close();
-                setTimeout(startBrowser, 5000); // Restart the whole function
+                setTimeout(startBrowser, 5000);
             }
         }
 
-        // Start the first cycle
         runCycle();
 
     } catch (err) {
