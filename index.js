@@ -27,6 +27,7 @@ app.get('/', (req, res) => {
                 .controls button:disabled { background: #555; cursor: not-allowed; }
                 .controls button.secondary { background: #3498db; }
                 .controls button.view-btn { background: #9b59b6; }
+                .controls button.key-btn { background: #e67e22; }
                 .controls input { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #333; color: #fff; min-width: 300px; font-size: 14px; }
                 .view-container { position: relative; border: 2px solid #444; border-radius: 8px; overflow: hidden; background: #000; min-height: 400px; }
                 .screenshot-view { position: relative; width: 100%; cursor: crosshair; }
@@ -34,6 +35,7 @@ app.get('/', (req, res) => {
                 .no-view { padding: 40px; text-align: center; color: #666; }
                 .click-indicator { position: absolute; width: 20px; height: 20px; border: 2px solid #ff0000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); animation: pulse 0.5s ease-out; }
                 @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
+                .keyboard-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid #444; }
             </style>
         </head>
         <body>
@@ -53,6 +55,18 @@ app.get('/', (req, res) => {
                 <button onclick="executeJS()">⚡ Execute JS</button>
                 <button onclick="typeText()">⌨️ Type Text</button>
                 <button onclick="clickAt()" class="secondary">🖱️ Click Coordinates</button>
+                <div class="keyboard-section">
+                    <button onclick="pressKey('Enter')" class="key-btn">↵ Enter</button>
+                    <button onclick="pressKey('Escape')" class="key-btn">⎋ Escape</button>
+                    <button onclick="pressKey('Tab')" class="key-btn">⇥ Tab</button>
+                    <button onclick="pressKey('Backspace')" class="key-btn">⌫ Backspace</button>
+                    <button onclick="pressKey('ArrowUp')" class="key-btn">↑</button>
+                    <button onclick="pressKey('ArrowDown')" class="key-btn">↓</button>
+                    <button onclick="pressKey('ArrowLeft')" class="key-btn">←</button>
+                    <button onclick="pressKey('ArrowRight')" class="key-btn">→</button>
+                    <input type="text" id="customKey" placeholder="Custom key (e.g., F5, Space)" style="min-width: 150px;">
+                    <button onclick="pressCustomKey()" class="key-btn">⌨️ Press Custom Key</button>
+                </div>
             </div>
             <div class="view-container" id="viewContainer">
                 <div class="no-view">No screenshot taken yet. Click "Take Screenshot" to capture the browser view.</div>
@@ -127,6 +141,21 @@ app.get('/', (req, res) => {
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({x, y})
                     });
+                }
+
+                async function pressKey(key) {
+                    await fetch('/press-key', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({key})
+                    });
+                }
+
+                async function pressCustomKey() {
+                    const key = document.getElementById('customKey').value;
+                    if (key) {
+                        await pressKey(key);
+                    }
                 }
 
                 async function reload() {
@@ -206,33 +235,102 @@ app.post('/click', async (req, res) => {
         if (currentPage) {
             console.log(`🖱️ Clicking at coordinates: (${x}, ${y})`);
 
-            // First, check if we're dealing with an iframe situation
+            // Get information about frames
             const frames = currentPage.frames();
             console.log(`📊 Total frames on page: ${frames.length}`);
 
-            // Try to click at the element level for better accuracy
+            // Try multiple click strategies for better compatibility
+            let clickSuccess = false;
+
+            // Strategy 1: Try to find and click the element directly
             try {
-                await currentPage.evaluate((clickX, clickY) => {
-                    // Find element at the exact coordinates
+                const elementInfo = await currentPage.evaluate((clickX, clickY) => {
                     const element = document.elementFromPoint(clickX, clickY);
                     if (element) {
-                        console.log('Found element:', element.tagName, element.className);
+                        const tagName = element.tagName;
+                        const className = element.className;
+                        const id = element.id;
+
+                        // Try clicking the element
                         element.click();
-                        return true;
+
+                        return {
+                            success: true,
+                            tagName: tagName,
+                            className: className,
+                            id: id
+                        };
                     }
-                    return false;
+                    return { success: false };
                 }, x, y);
-                console.log('✅ Click executed via element.click()');
+
+                if (elementInfo.success) {
+                    console.log(`✅ Element click: <${elementInfo.tagName}> class="${elementInfo.className}" id="${elementInfo.id}"`);
+                    clickSuccess = true;
+                }
             } catch (evalError) {
-                console.log('⚠️ Element click failed, using mouse click fallback');
-                // Fallback to mouse click
-                await currentPage.mouse.click(x, y);
+                console.log('⚠️ Element click strategy failed:', evalError.message);
+            }
+
+            // Strategy 2: If element click failed, try mouse click with mouse down/up for better compatibility
+            if (!clickSuccess) {
+                try {
+                    await currentPage.mouse.click(x, y, { delay: 50 });
+                    console.log('✅ Mouse click executed with delay');
+                    clickSuccess = true;
+                } catch (mouseError) {
+                    console.log('⚠️ Mouse click failed:', mouseError.message);
+                }
+            }
+
+            // Strategy 3: Try clicking in each frame if it's an iframe-heavy page
+            if (!clickSuccess && frames.length > 1) {
+                console.log('🔍 Attempting frame-based click...');
+                for (const frame of frames) {
+                    try {
+                        const frameElement = await frame.frameElement();
+                        if (frameElement) {
+                            const box = await frameElement.boundingBox();
+                            if (box && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height) {
+                                const frameX = x - box.x;
+                                const frameY = y - box.y;
+                                await frame.evaluate((fx, fy) => {
+                                    const el = document.elementFromPoint(fx, fy);
+                                    if (el) el.click();
+                                }, frameX, frameY);
+                                console.log(`✅ Clicked inside frame at relative position (${frameX}, ${frameY})`);
+                                clickSuccess = true;
+                                break;
+                            }
+                        }
+                    } catch (frameError) {
+                        // Continue to next frame
+                    }
+                }
+            }
+
+            if (!clickSuccess) {
+                console.log('⚠️ All click strategies failed, but command sent');
             }
 
             res.json({ success: true });
         }
     } catch (e) { 
         console.error('❌ Click error:', e.message);
+        res.json({ success: false, error: e.message }); 
+    }
+});
+
+app.post('/press-key', async (req, res) => {
+    try {
+        const { key } = req.body;
+        if (currentPage && key) {
+            console.log(`⌨️ Pressing key: ${key}`);
+            await currentPage.keyboard.press(key);
+            res.json({ success: true });
+        }
+    } catch (e) { 
+        console.error('❌ Key press error:', e.message);
         res.json({ success: false, error: e.message }); 
     }
 });
