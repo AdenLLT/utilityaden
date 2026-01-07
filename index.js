@@ -461,10 +461,10 @@ async function startBrowser() {
                      throw new Error("PAGE_CRASHED");
                 }
 
-                // 4. Wait and Click
+                // 4. Wait and Click at specific coordinates (797, 393)
                 await sleep(15000); 
-                await page.mouse.click(500, 300);
-                console.log('🖱️ Performed automated mouse click');
+                await page.mouse.click(797, 393);
+                console.log('🖱️ Performed automated mouse click at coordinates (797, 393)');
 
                 // 5. Schedule Next Cycle (Recursive setTimeout is better than setInterval)
                 setTimeout(runCycle, RELOAD_INTERVAL);
