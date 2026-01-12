@@ -150,6 +150,37 @@ function findChrome() {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// 🍪 Function to extract and save cookies
+async function updateCookies(page) {
+    try {
+        console.log("🍪 Extracting fresh cookies...");
+        const cookies = await page.cookies();
+
+        // Format cookies with proper structure
+        const formattedCookies = cookies.map((cookie, index) => ({
+            domain: cookie.domain,
+            expirationDate: cookie.expires || undefined,
+            hostOnly: cookie.domain.startsWith('.') ? false : true,
+            httpOnly: cookie.httpOnly || false,
+            name: cookie.name,
+            path: cookie.path,
+            sameSite: cookie.sameSite || 'unspecified',
+            secure: cookie.secure || false,
+            session: cookie.expires === -1 || !cookie.expires,
+            storeId: "0",
+            value: cookie.value,
+            id: index + 1
+        }));
+
+        const cookiesPath = path.join(__dirname, 'replit_cookies.json');
+        fs.writeFileSync(cookiesPath, JSON.stringify(formattedCookies, null, 4));
+
+        console.log(`✅ Successfully updated ${formattedCookies.length} cookies to replit_cookies.json`);
+    } catch (err) {
+        console.error("❌ Failed to update cookies:", err.message);
+    }
+}
+
 async function startBrowser() {
     const userDataDir = path.join(__dirname, 'chrome_user_data');
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
@@ -157,6 +188,7 @@ async function startBrowser() {
 
     const RELOAD_INTERVAL = 5 * 60 * 1000; 
     const MAX_CYCLES_BEFORE_RESTART = 12; 
+    const COOKIE_UPDATE_INTERVAL = 5; // Update cookies every 5 cycles
 
     let browser = null;
     let cycleCount = 0;
@@ -186,6 +218,7 @@ async function startBrowser() {
         if (fs.existsSync(cookiesPath)) {
             const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
             await page.setCookie(...cookies);
+            console.log("🍪 Loaded existing cookies from file");
         }
 
         async function runCycle() {
@@ -249,6 +282,15 @@ async function startBrowser() {
                 await sleep(15000); 
                 await page.mouse.click(500, 300);
                 console.log('🖱️ Performed automated mouse click');
+
+                // ==========================================
+                // 🍪 COOKIE UPDATE: Every 5 cycles
+                // ==========================================
+                if (cycleCount % COOKIE_UPDATE_INTERVAL === 0) {
+                    console.log(`\n🔄 Cycle ${cycleCount}: Time to update cookies!`);
+                    await updateCookies(page);
+                }
+                // ==========================================
 
                 setTimeout(runCycle, RELOAD_INTERVAL);
 
