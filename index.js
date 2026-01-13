@@ -155,12 +155,14 @@ async function updateCookies(page) {
     } catch (err) { console.error("❌ Cookie Update Failed:", err.message); }
 }
 
-// 🛡️ Single Action to Check Deny AND Click Target
-async function performSmartClick(page) {
+// 🛡️ TRIPLE THREAT TECHNIQUE FUNCTION
+async function performTripleThreat(page) {
     const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
 
     try {
-        // 1️⃣ Priority: Handle "Deny" buttons first
+        console.log("⚔️ Initiating Triple-Threat Execution...");
+
+        // 1️⃣ Technique: Handle "Deny" buttons first
         const denyClicked = await page.evaluate(() => {
             const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
             if (deny) {
@@ -175,7 +177,7 @@ async function performSmartClick(page) {
             await sleep(1000); // Wait for popup to close
         }
 
-        // 2️⃣ Find the specific "Run" button
+        // 2️⃣ Technique: Find the button and get its exact coordinates
         const buttonHandle = await page.evaluateHandle((dVal) => {
             const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
                         document.querySelector('button[aria-label*="Run"]') ||
@@ -183,7 +185,11 @@ async function performSmartClick(page) {
 
             if (btn) {
                 const rect = btn.getBoundingClientRect();
-                return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, found: true };
+                return {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    found: true
+                };
             }
             return { found: false };
         }, targetPathD);
@@ -191,110 +197,42 @@ async function performSmartClick(page) {
         const coords = await buttonHandle.jsonValue();
 
         if (coords.found) {
-            console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Clicking...`);
+            console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Deploying click arsenal...`);
 
-            // Safe Physical Click (using try/catch to avoid 'left already pressed' crashes)
+            // A. Move mouse and click (Physical simulation)
             try {
                 await page.mouse.move(coords.x, coords.y);
                 await page.mouse.down();
                 await sleep(100);
                 await page.mouse.up();
-            } catch (mouseErr) {
-                console.log(`⚠️ Physical click warning: ${mouseErr.message}. Attempting JS click fallback.`);
-                await page.mouse.up().catch(()=> {}); // Reset mouse state
-            }
+            } catch(mouseErr) { console.log("⚠️ Mouse move failed (non-fatal): " + mouseErr.message); }
 
-            // JavaScript click dispatch (Backups)
+            // B. JavaScript click dispatch (The "Double Tap")
             await page.evaluate((dVal) => {
                 const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
                             document.querySelector('button[aria-label*="Run"]') ||
                             document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+
                 if (btn) {
                     btn.focus();
                     btn.click();
+                    // C. Event Dispatching (The "Insurance Policy")
+                    ['mousedown', 'mouseup', 'click'].forEach(evt => 
+                        btn.dispatchEvent(new MouseEvent(evt, {bubbles: true, cancelable: true, view: window}))
+                    );
                 }
             }, targetPathD);
 
-            console.log("✅ Click action executed.");
+            console.log("✅ Triple-Threat successful.");
         } else {
-            console.log("⚠️ Target button not found in DOM.");
+            console.log("⚠️ Run button not visible. Attempting fallback blind click at (500, 40)...");
+            // Optional: click where the button usually lives in the header
+            try { await page.mouse.click(500, 40); } catch(e) {}
         }
+
     } catch (e) {
-        console.log(`❌ Click Sequence Error: ${e.message}`);
+        console.log(`❌ Triple-Threat Error: ${e.message}`);
     }
-}
-
-// ⏱️ 30-Second Clicker (Extreme Reliability Version)
-async function startRecurringClicker(page) {
-    console.log("⏰ 30s Loop: Starting high-intensity clicker service.");
-    
-    const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
-
-    setInterval(async () => {
-        if (!page || page.isClosed()) return;
-        
-        try {
-            // 1️⃣ Technique: Handle "Deny" buttons first
-            await page.evaluate(() => {
-                const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
-                if (deny) deny.click();
-            });
-
-            // 2️⃣ Technique: Find the button and get its exact coordinates
-            const buttonHandle = await page.evaluateHandle((dVal) => {
-                const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                            document.querySelector('button[aria-label*="Run"]') ||
-                            document.querySelector(`path[d="${dVal}"]`)?.closest('button');
-                
-                if (btn) {
-                    const rect = btn.getBoundingClientRect();
-                    return {
-                        x: rect.left + rect.width / 2,
-                        y: rect.top + rect.height / 2,
-                        found: true
-                    };
-                }
-                return { found: false };
-            }, targetPathD);
-
-            const coords = await buttonHandle.jsonValue();
-
-            if (coords.found) {
-                console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Executing triple-threat click...`);
-                
-                // A. Move mouse and click (Physical simulation)
-                await page.mouse.move(coords.x, coords.y);
-                await page.mouse.down();
-                await sleep(100);
-                await page.mouse.up();
-
-                // B. JavaScript click dispatch
-                await page.evaluate((dVal) => {
-                    const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                                document.querySelector('button[aria-label*="Run"]') ||
-                                document.querySelector(`path[d="${dVal}"]`)?.closest('button');
-                    
-                    if (btn) {
-                        btn.focus();
-                        btn.click();
-                        // Dispatch extra events for stubborn listeners
-                        ['mousedown', 'mouseup', 'click'].forEach(evt => 
-                            btn.dispatchEvent(new MouseEvent(evt, {bubbles: true, cancelable: true, view: window}))
-                        );
-                    }
-                }, targetPathD);
-
-                console.log("✅ 30s Loop: Click techniques deployed.");
-            } else {
-                console.log("⚠️ 30s Loop: Run button not visible in DOM. Trying blind click at common location (500, 40)...");
-                // Optional: click where the button usually lives in the header
-                await page.mouse.click(500, 40); 
-            }
-
-        } catch (e) {
-            console.log(`⏰ 30s Loop Error: ${e.message}`);
-        }
-    }, 30000); 
 }
 
 async function startBrowser() {
@@ -302,8 +240,8 @@ async function startBrowser() {
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
     const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
 
-    const RELOAD_INTERVAL = 3 * 60 * 1000; // 3 Minutes per cycle (Adjusted for safety)
-    const MAX_CYCLES_BEFORE_RESTART = 12; 
+    const CYCLE_DURATION = 3 * 60 * 1000; // Total Cycle Length (3 Minutes)
+    const MAX_CYCLES_BEFORE_RESTART = 50; 
     const COOKIE_UPDATE_INTERVAL = 5;
 
     let browser = null;
@@ -328,9 +266,6 @@ async function startBrowser() {
         currentPage = page; 
         page.setDefaultTimeout(60000);
 
-        // Start the recurring clicker service
-        startRecurringClicker(page);
-
         await page.setViewport({ width: 1280, height: 720 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
@@ -342,51 +277,56 @@ async function startBrowser() {
 
         async function runCycle() {
             cycleCount++;
-            console.log(`\n🔄 Cycle ${cycleCount}/${MAX_CYCLES_BEFORE_RESTART} started...`);
+            console.log(`\n🔄 Cycle ${cycleCount} started...`);
 
             try {
-                if (cycleCount > MAX_CYCLES_BEFORE_RESTART) {
-                    console.log("♻️ Max cycles reached. Restarting browser...");
-                    throw new Error("PLANNED_RESTART");
-                }
-
-                // 1. Navigate cleanly
-                console.log(`⏳ Loading Replit Workspace...`);
+                // 1. Fresh Restart Logic (Reload page to ensure fresh state, but DO NOT EXIT)
+                console.log(`⏳ Refreshing Page State...`);
                 try {
-                    await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                    // We use reload if we are already there to save time, or goto if we need to enforce the URL
+                    if (page.url().includes('replit.com')) {
+                        await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
+                    } else {
+                        await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                    }
                 } catch (e) {
-                    if (!e.message.includes('timeout')) console.log("⚠️ Load Warning: " + e.message);
+                    console.log("⚠️ Reload/Nav Warning: " + e.message + " (Continuing anyway)");
                 }
 
-                // 2. Wait for page stability
+                // 2. Wait for stabilization
                 await sleep(5000); 
-
-                const pageTitle = await page.title();
-                console.log(`📍 Current Title: "${pageTitle}"`);
-
-                if (pageTitle === 'replit.com' || pageTitle === '' || pageTitle.includes('Aw, Snap')) {
-                     throw new Error("PAGE_CRASHED");
-                }
 
                 // 3. Cookie Management
                 if (cycleCount % COOKIE_UPDATE_INTERVAL === 0) {
                     await updateCookies(page);
                 }
 
-                // 4. ACTION LOGIC: Clicks are now handled by the startRecurringClicker service.
-                // We'll still keep the check for Deny button here for additional reliability on cycle.
-                await page.evaluate(() => {
-                    const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
-                    if (deny) deny.click();
-                });
+                // 4. TRIPLE THREAT SEQUENCE (3 Times, 15s Interval)
+                // This replaces the old "even/odd" logic with pure aggression
+                console.log("⚡ Starting Burst Sequence (3x Triple Threat)");
+
+                for (let i = 1; i <= 3; i++) {
+                    console.log(`👉 Burst Iteration ${i}/3`);
+
+                    // Execute the technique
+                    await performTripleThreat(page);
+
+                    // Wait 15 seconds between iterations (unless it's the last one)
+                    if (i < 3) {
+                        console.log("⏳ Waiting 15s for next burst...");
+                        await sleep(15000);
+                    }
+                }
+
+                console.log("✅ Cycle Complete. Waiting for next cycle timer...");
 
                 // Schedule next cycle
-                setTimeout(runCycle, RELOAD_INTERVAL);
+                setTimeout(runCycle, CYCLE_DURATION);
 
             } catch (error) {
-                console.log(`❌ Cycle Error (${error.message}). Re-initializing...`);
-                if (browser) await browser.close();
-                setTimeout(startBrowser, 5000);
+                console.log(`❌ Cycle Error (${error.message}). Recovering without exit...`);
+                // Even on error, we schedule the next cycle, we do NOT close the browser
+                setTimeout(runCycle, 10000);
             }
         }
 
