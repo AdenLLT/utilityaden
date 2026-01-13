@@ -314,7 +314,7 @@ async function startBrowser() {
                     // Wait 15 seconds between iterations (unless it's the last one)
                     if (i < 3) {
                         console.log("⏳ Waiting 15s for next burst...");
-                        await sleep(15000);
+                        await sleep(5000);
                     }
                 }
 
