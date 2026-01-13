@@ -224,9 +224,9 @@ async function performSmartClick(page) {
     }
 }
 
-// ⏱️ 30-Second Clicker (Extreme Reliability Version)
+// 30-Minute Clicker (Extreme Reliability Version)
 async function startRecurringClicker(page) {
-    console.log("⏰ 30s Loop: Starting high-intensity clicker service.");
+    console.log("⏰ 30m Loop: Starting high-intensity clicker service.");
     
     const targetPathD = "M20.593 10.91a1.25 1.25 0 0 1 0 2.18l-14.48 8.145a1.25 1.25 0 0 1-1.863-1.09V3.855a1.25 1.25 0 0 1 1.863-1.09l14.48 8.146Z";
 
@@ -286,15 +286,15 @@ async function startRecurringClicker(page) {
                     }
                 }, targetPathD);
 
-                console.log("✅ 30s Loop: Click techniques deployed.");
+                console.log("✅ 30m Loop: Click techniques deployed.");
             } else {
-                console.log("ℹ️ 30s Loop: App appears to be already running or button not found. Skipping click.");
+                console.log("ℹ️ 30m Loop: App appears to be already running or button not found. Skipping click.");
             }
 
         } catch (e) {
-            console.log(`⏰ 30s Loop Error: ${e.message}`);
+            console.log(`⏰ 30m Loop Error: ${e.message}`);
         }
-    }, 30000); 
+    }, 30 * 60000); 
 }
 
 async function startBrowser() {
