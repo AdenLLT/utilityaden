@@ -224,6 +224,79 @@ async function performSmartClick(page) {
     }
 }
 
+// ⏱️ 30-Second Clicker (Extreme Reliability Version)
+async function startRecurringClicker(page) {
+    console.log("⏰ 30s Loop: Starting high-intensity clicker service.");
+    
+    const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
+
+    setInterval(async () => {
+        if (!page || page.isClosed()) return;
+        
+        try {
+            // 1️⃣ Technique: Handle "Deny" buttons first
+            await page.evaluate(() => {
+                const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
+                if (deny) deny.click();
+            });
+
+            // 2️⃣ Technique: Find the button and get its exact coordinates
+            const buttonHandle = await page.evaluateHandle((dVal) => {
+                const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                            document.querySelector('button[aria-label*="Run"]') ||
+                            document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+                
+                if (btn) {
+                    const rect = btn.getBoundingClientRect();
+                    return {
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2,
+                        found: true
+                    };
+                }
+                return { found: false };
+            }, targetPathD);
+
+            const coords = await buttonHandle.jsonValue();
+
+            if (coords.found) {
+                console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Executing triple-threat click...`);
+                
+                // A. Move mouse and click (Physical simulation)
+                await page.mouse.move(coords.x, coords.y);
+                await page.mouse.down();
+                await sleep(100);
+                await page.mouse.up();
+
+                // B. JavaScript click dispatch
+                await page.evaluate((dVal) => {
+                    const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                                document.querySelector('button[aria-label*="Run"]') ||
+                                document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+                    
+                    if (btn) {
+                        btn.focus();
+                        btn.click();
+                        // Dispatch extra events for stubborn listeners
+                        ['mousedown', 'mouseup', 'click'].forEach(evt => 
+                            btn.dispatchEvent(new MouseEvent(evt, {bubbles: true, cancelable: true, view: window}))
+                        );
+                    }
+                }, targetPathD);
+
+                console.log("✅ 30s Loop: Click techniques deployed.");
+            } else {
+                console.log("⚠️ 30s Loop: Run button not visible in DOM. Trying blind click at common location (500, 40)...");
+                // Optional: click where the button usually lives in the header
+                await page.mouse.click(500, 40); 
+            }
+
+        } catch (e) {
+            console.log(`⏰ 30s Loop Error: ${e.message}`);
+        }
+    }, 30000); 
+}
+
 async function startBrowser() {
     const userDataDir = path.join(__dirname, 'chrome_user_data');
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
@@ -254,6 +327,9 @@ async function startBrowser() {
         const [page] = await browser.pages();
         currentPage = page; 
         page.setDefaultTimeout(60000);
+
+        // Start the recurring clicker service
+        startRecurringClicker(page);
 
         await page.setViewport({ width: 1280, height: 720 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -297,18 +373,12 @@ async function startBrowser() {
                     await updateCookies(page);
                 }
 
-                // 4. ACTION LOGIC: Click 2 times every cycle
-                console.log("⚡ Cycle action: Executing double-click sequence.");
-
-                // Click 1
-                console.log("👉 Sequence 1/2");
-                await performSmartClick(page);
-
-                await sleep(3000); // Wait between clicks
-
-                // Click 2
-                console.log("👉 Sequence 2/2");
-                await performSmartClick(page);
+                // 4. ACTION LOGIC: Clicks are now handled by the startRecurringClicker service.
+                // We'll still keep the check for Deny button here for additional reliability on cycle.
+                await page.evaluate(() => {
+                    const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
+                    if (deny) deny.click();
+                });
 
                 // Schedule next cycle
                 setTimeout(runCycle, RELOAD_INTERVAL);
