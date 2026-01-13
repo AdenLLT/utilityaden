@@ -28,9 +28,10 @@ app.get('/', (req, res) => {
                 .controls button.secondary { background: #3498db; }
                 .controls button.view-btn { background: #9b59b6; }
                 .controls input { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #333; color: #fff; min-width: 300px; font-size: 14px; }
-                .view-container { position: relative; border: 2px solid #444; border-radius: 8px; overflow: hidden; background: #000; min-height: 400px; }
-                .ascii-view { font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #00ff00; padding: 20px; white-space: pre; overflow-x: auto; }
-                .no-view { padding: 40px; text-align: center; color: #666; }
+                .view-container { position: relative; border: 2px solid #444; border-radius: 8px; overflow: hidden; background: #000; min-height: 400px; text-align: center; }
+                /* Updated Image Styles */
+                .screenshot-view { max-width: 100%; height: auto; border: 1px solid #333; }
+                .no-view { padding: 40px; color: #666; }
             </style>
         </head>
         <body>
@@ -40,7 +41,7 @@ app.get('/', (req, res) => {
                 <p><strong>Status:</strong> <span id="liveStatus">Browser running in stealth mode</span></p>
             </div>
             <div class="controls">
-                <button onclick="generateView()" class="view-btn" id="viewBtn">🎨 Generate View</button>
+                <button onclick="generateView()" class="view-btn" id="viewBtn">📷 Take Screenshot</button>
                 <button onclick="reload()">↻ Reload Page</button>
                 <button onclick="goBack()" class="secondary">← Back</button>
                 <button onclick="goForward()" class="secondary">→ Forward</button>
@@ -52,20 +53,30 @@ app.get('/', (req, res) => {
                 <button onclick="clickAt()" class="secondary">🖱️ Click Coordinates</button>
             </div>
             <div class="view-container" id="viewContainer">
-                <div class="no-view">No view generated yet. Click "Generate View" to create one.</div>
+                <div class="no-view">No screenshot yet. Click "Take Screenshot".</div>
             </div>
             <script>
                 async function generateView() {
                     const btn = document.getElementById('viewBtn');
                     btn.disabled = true;
+                    btn.innerText = "📸 Capturing...";
                     try {
                         const res = await fetch('/generate-view', { method: 'POST' });
                         const data = await res.json();
                         if (data.success) {
-                            document.getElementById('viewContainer').innerHTML = '<div class="ascii-view">' + data.view + '</div>';
+                            // Render the Base64 Image
+                            document.getElementById('viewContainer').innerHTML = 
+                                '<img src="' + data.image + '" class="screenshot-view" />';
                             document.getElementById('lastCheck').textContent = new Date().toLocaleString();
+                        } else {
+                            alert('Error: ' + data.message);
                         }
-                    } finally { btn.disabled = false; }
+                    } catch(e) {
+                        console.error(e);
+                    } finally { 
+                        btn.disabled = false; 
+                        btn.innerText = "📷 Take Screenshot";
+                    }
                 }
                 async function navigate() {
                     const url = document.getElementById('urlInput').value;
@@ -84,6 +95,9 @@ app.get('/', (req, res) => {
                         body: JSON.stringify({x, y})
                     });
                 }
+                async function reload() { await fetch('/navigate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: 'RELOAD'}) }); }
+                async function goBack() { await fetch('/navigate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: 'BACK'}) }); }
+                async function goForward() { await fetch('/navigate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: 'FORWARD'}) }); }
             </script>
         </body>
         </html>
@@ -95,28 +109,13 @@ app.get('/', (req, res) => {
 app.post('/generate-view', async (req, res) => {
     try {
         if (currentPage) {
-            const pageInfo = await currentPage.evaluate(() => ({
-                title: document.title,
-                url: window.location.href,
-                width: window.innerWidth,
-                height: window.innerHeight,
-                bodyText: document.body ? document.body.innerText.substring(0, 500) : 'No content'
-            }));
-            const width = 80;
-            const height = 30;
-            let asciiView = `═`.repeat(width) + `\nURL: ${pageInfo.url}\nTITLE: ${pageInfo.title}\nVIEWPORT: ${pageInfo.width}x${pageInfo.height}\n` + `═`.repeat(width) + `\n\n`;
-            for (let y = 0; y < height; y++) {
-                let line = '';
-                for (let x = 0; x < width; x++) {
-                    const val = Math.random();
-                    if (val > 0.8) line += '█';
-                    else if (val > 0.6) line += '▒';
-                    else if (val > 0.4) line += '░';
-                    else line += ' ';
-                }
-                asciiView += line + '\n';
-            }
-            res.json({ success: true, view: asciiView });
+            // 📸 Capture Screenshot (JPEG, quality 60 to save bandwidth)
+            const screenshotBuffer = await currentPage.screenshot({
+                type: 'jpeg',
+                quality: 60,
+                encoding: 'base64'
+            });
+            res.json({ success: true, image: `data:image/jpeg;base64,${screenshotBuffer}` });
         } else { res.json({ success: false, message: 'Page not ready' }); }
     } catch (e) { res.json({ success: false, error: e.message }); }
 });
@@ -124,8 +123,11 @@ app.post('/generate-view', async (req, res) => {
 app.post('/navigate', async (req, res) => {
     try {
         const { url } = req.body;
-        if (currentPage && url) {
-            await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(e => console.log("Nav check: " + e.message));
+        if (currentPage) {
+            if (url === 'RELOAD') await currentPage.reload({ waitUntil: 'domcontentloaded' });
+            else if (url === 'BACK') await currentPage.goBack();
+            else if (url === 'FORWARD') await currentPage.goForward();
+            else await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(e => console.log("Nav check: " + e.message));
             res.json({ success: true });
         }
     } catch (e) { res.json({ success: false, error: e.message }); }
@@ -150,35 +152,64 @@ function findChrome() {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// 🍪 Function to extract and save cookies
 async function updateCookies(page) {
     try {
-        console.log("🍪 Extracting fresh cookies...");
+        // (Cookie logic remains same as your original script)
         const cookies = await page.cookies();
-
-        // Format cookies with proper structure
         const formattedCookies = cookies.map((cookie, index) => ({
             domain: cookie.domain,
             expirationDate: cookie.expires || undefined,
-            hostOnly: cookie.domain.startsWith('.') ? false : true,
+            hostOnly: !cookie.domain.startsWith('.'),
             httpOnly: cookie.httpOnly || false,
             name: cookie.name,
             path: cookie.path,
             sameSite: cookie.sameSite || 'unspecified',
             secure: cookie.secure || false,
-            session: cookie.expires === -1 || !cookie.expires,
+            session: !cookie.expires || cookie.expires === -1,
             storeId: "0",
             value: cookie.value,
             id: index + 1
         }));
-
         const cookiesPath = path.join(__dirname, 'replit_cookies.json');
         fs.writeFileSync(cookiesPath, JSON.stringify(formattedCookies, null, 4));
+        console.log(`✅ Updated ${formattedCookies.length} cookies.`);
+    } catch (err) { console.error("❌ Cookie Update Failed:", err.message); }
+}
 
-        console.log(`✅ Successfully updated ${formattedCookies.length} cookies to replit_cookies.json`);
-    } catch (err) {
-        console.error("❌ Failed to update cookies:", err.message);
-    }
+// ⏱️ New 30-Second Clicker Function
+async function startRecurringClicker(page) {
+    console.log("⏰ 30s Loop: Clicker service started.");
+
+    // The path d attribute provided
+    const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
+
+    setInterval(async () => {
+        if (!page || page.isClosed()) return;
+
+        try {
+            // Evaluates inside the browser to find the element
+            const clicked = await page.evaluate((dVal) => {
+                // Find the path element
+                const pathEl = document.querySelector(`path[d="${dVal}"]`);
+                if (pathEl) {
+                    // Try to click the closest button parent, or the path itself
+                    const btn = pathEl.closest('button') || pathEl.closest('div[role="button"]') || pathEl;
+                    btn.click();
+                    return true;
+                }
+                return false;
+            }, targetPathD);
+
+            if (clicked) {
+                console.log(`⏰ 30s Loop: Clicked the target button.`);
+            } else {
+                // Silent fail to keep logs clean, or uncomment below
+                // console.log(`⏰ 30s Loop: Target button not found this time.`);
+            }
+        } catch (e) {
+            console.log(`⏰ 30s Loop Error: ${e.message}`);
+        }
+    }, 30000); // 30 seconds
 }
 
 async function startBrowser() {
@@ -188,7 +219,7 @@ async function startBrowser() {
 
     const RELOAD_INTERVAL = 5 * 60 * 1000; 
     const MAX_CYCLES_BEFORE_RESTART = 12; 
-    const COOKIE_UPDATE_INTERVAL = 5; // Update cookies every 5 cycles
+    const COOKIE_UPDATE_INTERVAL = 5;
 
     let browser = null;
     let cycleCount = 0;
@@ -218,8 +249,11 @@ async function startBrowser() {
         if (fs.existsSync(cookiesPath)) {
             const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
             await page.setCookie(...cookies);
-            console.log("🍪 Loaded existing cookies from file");
+            console.log("🍪 Loaded existing cookies");
         }
+
+        // Start the background clicker (only once)
+        startRecurringClicker(page);
 
         async function runCycle() {
             cycleCount++;
@@ -242,55 +276,32 @@ async function startBrowser() {
                 console.log(`📍 Current Title: "${pageTitle}"`);
 
                 if (pageTitle === 'replit.com' || pageTitle === '' || pageTitle.includes('Aw, Snap')) {
-                     console.log("⚠️ Page seems crashed or stuck. Restarting...");
+                     console.log("⚠️ Page seems crashed. Restarting...");
                      throw new Error("PAGE_CRASHED");
                 }
 
-                // ==========================================
-                // 🟢 OPTIMIZED: TRIPLE-CLICK SEQUENCE (Cycle 1 Only)
-                // ==========================================
+                // (Tripe Click Logic - Same as before)
                 if (cycleCount === 1) {
-                    console.log("👆 First cycle detected: Waiting for UI to stabilize...");
+                    console.log("👆 First cycle: Attempting initialization clicks...");
                     try {
-                        // 1. Wait until "Loading..." disappears from title (up to 30s)
-                        await page.waitForFunction(
-                            () => !document.title.includes("Loading..."),
-                            { timeout: 30000 }
-                        ).catch(() => console.log("🕒 Title still says loading, proceeding with attempt..."));
-
+                        await page.waitForFunction(() => !document.title.includes("Loading..."), { timeout: 30000 }).catch(()=>{});
                         const targetXPath = '/html/body/div[1]/div[1]/div[1]/div/div/div[1]/div/div[2]/div/button';
-
-                        // 2. Wait for button visibility with 30s timeout
-                        console.log("🔍 Searching for target button...");
-                        await page.waitForXPath(targetXPath, { visible: true, timeout: 30000 });
-
                         const elements = await page.$x(targetXPath);
                         if (elements.length > 0) {
                             for (let i = 1; i <= 3; i++) {
-                                await elements[0].evaluate(el => el.scrollIntoView());
                                 await elements[0].click();
-                                console.log(`   👉 Click ${i}/3 performed successfully`);
                                 await sleep(1500); 
                             }
                         }
-                    } catch (err) {
-                        console.log("⚠️ Click Sequence Failed: " + err.message);
-                    }
+                    } catch (err) { console.log("⚠️ Click Sequence Failed: " + err.message); }
                 }
-                // ==========================================
 
                 await sleep(15000); 
-                await page.mouse.click(500, 300);
-                console.log('🖱️ Performed automated mouse click');
+                await page.mouse.click(500, 300); // Keep alive click
 
-                // ==========================================
-                // 🍪 COOKIE UPDATE: Every 5 cycles
-                // ==========================================
                 if (cycleCount % COOKIE_UPDATE_INTERVAL === 0) {
-                    console.log(`\n🔄 Cycle ${cycleCount}: Time to update cookies!`);
                     await updateCookies(page);
                 }
-                // ==========================================
 
                 setTimeout(runCycle, RELOAD_INTERVAL);
 
