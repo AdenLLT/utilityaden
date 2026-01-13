@@ -8,7 +8,7 @@ let currentPage = null;
 
 app.use(express.json());
 
-// Dashboard UI with Remote Control
+// --- Dashboard UI (Unchanged) ---
 app.get('/', (req, res) => {
     const html = `
         <!DOCTYPE html>
@@ -69,29 +69,16 @@ app.get('/', (req, res) => {
                         } else {
                             alert('Error: ' + data.message);
                         }
-                    } catch(e) {
-                        console.error(e);
-                    } finally { 
-                        btn.disabled = false; 
-                        btn.innerText = "📷 Take Screenshot";
-                    }
+                    } catch(e) { console.error(e); } finally { btn.disabled = false; btn.innerText = "📷 Take Screenshot"; }
                 }
                 async function navigate() {
                     const url = document.getElementById('urlInput').value;
-                    await fetch('/navigate', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({url})
-                    });
+                    await fetch('/navigate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url}) });
                 }
                 async function clickAt() {
                     const coords = document.getElementById('urlInput').value;
                     const [x, y] = coords.split(',').map(n => parseInt(n.trim()));
-                    await fetch('/click', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({x, y})
-                    });
+                    await fetch('/click', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({x, y}) });
                 }
                 async function reload() { await fetch('/navigate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: 'RELOAD'}) }); }
                 async function goBack() { await fetch('/navigate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: 'BACK'}) }); }
@@ -103,15 +90,11 @@ app.get('/', (req, res) => {
     res.send(html);
 });
 
-// API Endpoints
+// --- API Endpoints ---
 app.post('/generate-view', async (req, res) => {
     try {
         if (currentPage) {
-            const screenshotBuffer = await currentPage.screenshot({
-                type: 'jpeg',
-                quality: 60,
-                encoding: 'base64'
-            });
+            const screenshotBuffer = await currentPage.screenshot({ type: 'jpeg', quality: 60, encoding: 'base64' });
             res.json({ success: true, image: `data:image/jpeg;base64,${screenshotBuffer}` });
         } else { res.json({ success: false, message: 'Page not ready' }); }
     } catch (e) { res.json({ success: false, error: e.message }); }
@@ -124,7 +107,7 @@ app.post('/navigate', async (req, res) => {
             if (url === 'RELOAD') await currentPage.reload({ waitUntil: 'domcontentloaded' });
             else if (url === 'BACK') await currentPage.goBack();
             else if (url === 'FORWARD') await currentPage.goForward();
-            else await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(e => console.log("Nav check: " + e.message));
+            else await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
             res.json({ success: true });
         }
     } catch (e) { res.json({ success: false, error: e.message }); }
@@ -140,7 +123,7 @@ app.post('/click', async (req, res) => {
     } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// Start Browser Logic
+// --- Browser Logic ---
 function findChrome() {
     const paths = ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', process.env.CHROME_PATH].filter(Boolean);
     for (const p of paths) { if (fs.existsSync(p)) return p; }
@@ -172,77 +155,73 @@ async function updateCookies(page) {
     } catch (err) { console.error("❌ Cookie Update Failed:", err.message); }
 }
 
-// ⏱️ 30-Second Clicker (Extreme Reliability Version)
-async function startRecurringClicker(page) {
-    console.log("⏰ 30s Loop: Starting high-intensity clicker service.");
-
+// 🛡️ Single Action to Check Deny AND Click Target
+async function performSmartClick(page) {
     const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
 
-    setInterval(async () => {
-        if (!page || page.isClosed()) return;
+    try {
+        // 1️⃣ Priority: Handle "Deny" buttons first
+        const denyClicked = await page.evaluate(() => {
+            const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
+            if (deny) {
+                deny.click();
+                return true;
+            }
+            return false;
+        });
 
-        try {
-            // 1️⃣ Technique: Handle "Deny" buttons first
-            await page.evaluate(() => {
-                const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
-                if (deny) deny.click();
-            });
+        if(denyClicked) {
+            console.log("🛡️ 'Deny' button detected and clicked.");
+            await sleep(1000); // Wait for popup to close
+        }
 
-            // 2️⃣ Technique: Find the button and get its exact coordinates
-            const buttonHandle = await page.evaluateHandle((dVal) => {
-                const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                            document.querySelector('button[aria-label*="Run"]') ||
-                            document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+        // 2️⃣ Find the specific "Run" button
+        const buttonHandle = await page.evaluateHandle((dVal) => {
+            const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                        document.querySelector('button[aria-label*="Run"]') ||
+                        document.querySelector(`path[d="${dVal}"]`)?.closest('button');
 
-                if (btn) {
-                    const rect = btn.getBoundingClientRect();
-                    return {
-                        x: rect.left + rect.width / 2,
-                        y: rect.top + rect.height / 2,
-                        found: true
-                    };
-                }
-                return { found: false };
-            }, targetPathD);
+            if (btn) {
+                const rect = btn.getBoundingClientRect();
+                return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, found: true };
+            }
+            return { found: false };
+        }, targetPathD);
 
-            const coords = await buttonHandle.jsonValue();
+        const coords = await buttonHandle.jsonValue();
 
-            if (coords.found) {
-                console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Executing triple-threat click...`);
+        if (coords.found) {
+            console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Clicking...`);
 
-                // A. Move mouse and click (Physical simulation)
+            // Safe Physical Click (using try/catch to avoid 'left already pressed' crashes)
+            try {
                 await page.mouse.move(coords.x, coords.y);
                 await page.mouse.down();
                 await sleep(100);
                 await page.mouse.up();
-
-                // B. JavaScript click dispatch
-                await page.evaluate((dVal) => {
-                    const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                                document.querySelector('button[aria-label*="Run"]') ||
-                                document.querySelector(`path[d="${dVal}"]`)?.closest('button');
-
-                    if (btn) {
-                        btn.focus();
-                        btn.click();
-                        // Dispatch extra events for stubborn listeners
-                        ['mousedown', 'mouseup', 'click'].forEach(evt => 
-                            btn.dispatchEvent(new MouseEvent(evt, {bubbles: true, cancelable: true, view: window}))
-                        );
-                    }
-                }, targetPathD);
-
-                console.log("✅ 30s Loop: Click techniques deployed.");
-            } else {
-                console.log("⚠️ 30s Loop: Run button not visible in DOM. Trying blind click at common location (500, 40)...");
-                // Optional: click where the button usually lives in the header
-                await page.mouse.click(500, 40); 
+            } catch (mouseErr) {
+                console.log(`⚠️ Physical click warning: ${mouseErr.message}. Attempting JS click fallback.`);
+                await page.mouse.up().catch(()=> {}); // Reset mouse state
             }
 
-        } catch (e) {
-            console.log(`⏰ 30s Loop Error: ${e.message}`);
+            // JavaScript click dispatch (Backups)
+            await page.evaluate((dVal) => {
+                const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                            document.querySelector('button[aria-label*="Run"]') ||
+                            document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+                if (btn) {
+                    btn.focus();
+                    btn.click();
+                }
+            }, targetPathD);
+
+            console.log("✅ Click action executed.");
+        } else {
+            console.log("⚠️ Target button not found in DOM.");
         }
-    }, 30000); 
+    } catch (e) {
+        console.log(`❌ Click Sequence Error: ${e.message}`);
+    }
 }
 
 async function startBrowser() {
@@ -250,7 +229,7 @@ async function startBrowser() {
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
     const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
 
-    const RELOAD_INTERVAL = 5 * 60 * 1000; 
+    const RELOAD_INTERVAL = 3 * 60 * 1000; // 3 Minutes per cycle (Adjusted for safety)
     const MAX_CYCLES_BEFORE_RESTART = 12; 
     const COOKIE_UPDATE_INTERVAL = 5;
 
@@ -285,9 +264,6 @@ async function startBrowser() {
             console.log("🍪 Loaded existing cookies");
         }
 
-        // Start the background clicker
-        startRecurringClicker(page);
-
         async function runCycle() {
             cycleCount++;
             console.log(`\n🔄 Cycle ${cycleCount}/${MAX_CYCLES_BEFORE_RESTART} started...`);
@@ -298,6 +274,7 @@ async function startBrowser() {
                     throw new Error("PLANNED_RESTART");
                 }
 
+                // 1. Navigate cleanly
                 console.log(`⏳ Loading Replit Workspace...`);
                 try {
                     await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -305,34 +282,43 @@ async function startBrowser() {
                     if (!e.message.includes('timeout')) console.log("⚠️ Load Warning: " + e.message);
                 }
 
+                // 2. Wait for page stability
+                await sleep(5000); 
+
                 const pageTitle = await page.title();
                 console.log(`📍 Current Title: "${pageTitle}"`);
 
                 if (pageTitle === 'replit.com' || pageTitle === '' || pageTitle.includes('Aw, Snap')) {
-                     console.log("⚠️ Page seems crashed. Restarting...");
                      throw new Error("PAGE_CRASHED");
                 }
 
-                if (cycleCount === 1) {
-                    console.log("👆 First cycle: Checking for initialization dialogs...");
-                    try {
-                        await page.waitForFunction(() => !document.title.includes("Loading..."), { timeout: 30000 }).catch(()=>{});
-                        // Also try the Run button once immediately on load
-                        const btn = await page.$('button[data-cy="ws-run-btn"]');
-                        if (btn) {
-                            await btn.click();
-                            console.log("👉 Initial Run button click performed.");
-                        }
-                    } catch (err) { console.log("⚠️ Initial Click Failed: " + err.message); }
-                }
-
-                await sleep(15000); 
-                await page.mouse.click(500, 300); 
-
+                // 3. Cookie Management
                 if (cycleCount % COOKIE_UPDATE_INTERVAL === 0) {
                     await updateCookies(page);
                 }
 
+                // 4. ACTION LOGIC: Click 2 times every 2 cycles (Cycles 2, 4, 6...)
+                // On Cycle 1, 3, 5... just load and check Deny.
+                if (cycleCount % 2 === 0) {
+                    console.log("⚡ Even Cycle detected: Executing double-click sequence.");
+
+                    // Click 1
+                    console.log("👉 Sequence 1/2");
+                    await performSmartClick(page);
+
+                    await sleep(3000); // Wait between clicks
+
+                    // Click 2
+                    console.log("👉 Sequence 2/2");
+                    await performSmartClick(page);
+
+                } else {
+                    console.log("💤 Odd Cycle detected: Checking for 'Deny' only.");
+                    // Still check Deny on odd cycles to keep UI clean
+                    await performSmartClick(page);
+                }
+
+                // Schedule next cycle
                 setTimeout(runCycle, RELOAD_INTERVAL);
 
             } catch (error) {
