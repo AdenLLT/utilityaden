@@ -172,48 +172,77 @@ async function updateCookies(page) {
     } catch (err) { console.error("❌ Cookie Update Failed:", err.message); }
 }
 
-// ⏱️ 30-Second Clicker (Updated Logic)
+// ⏱️ 30-Second Clicker (Extreme Reliability Version)
 async function startRecurringClicker(page) {
-    console.log("⏰ 30s Loop: Clicker service started.");
-    console.log("   👉 Priority 1: 'Deny' buttons");
-    console.log("   👉 Priority 2: Replit 'Run' button (via data-cy or aria-label)");
+    console.log("⏰ 30s Loop: Starting high-intensity clicker service.");
+
+    const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
 
     setInterval(async () => {
         if (!page || page.isClosed()) return;
 
         try {
-            const result = await page.evaluate(() => {
-                // 1️⃣ Priority Check: Find buttons with text "Deny"
-                const allButtons = Array.from(document.querySelectorAll('button, div[role="button"], a'));
-                const denyButton = allButtons.find(b => b.innerText && b.innerText.includes('Deny'));
-
-                if (denyButton) {
-                    denyButton.click();
-                    return 'CLICKED_DENY';
-                }
-
-                // 2️⃣ Robust Check: Find the Replit Run Button by ID/Label
-                // We use multiple selectors to ensure we catch it in any state
-                const runButton = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                                  document.querySelector('button[aria-label="Run or stop the app"]');
-
-                if (runButton) {
-                    runButton.click();
-                    return 'CLICKED_RUN_BTN';
-                }
-
-                return 'NO_ACTION';
+            // 1️⃣ Technique: Handle "Deny" buttons first
+            await page.evaluate(() => {
+                const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
+                if (deny) deny.click();
             });
 
-            if (result === 'CLICKED_DENY') {
-                console.log("🚫 30s Loop: Found and clicked a 'Deny' button.");
-            } else if (result === 'CLICKED_RUN_BTN') {
-                console.log("✅ 30s Loop: Clicked the Replit Run/Stop button.");
+            // 2️⃣ Technique: Find the button and get its exact coordinates
+            const buttonHandle = await page.evaluateHandle((dVal) => {
+                const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                            document.querySelector('button[aria-label*="Run"]') ||
+                            document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+
+                if (btn) {
+                    const rect = btn.getBoundingClientRect();
+                    return {
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2,
+                        found: true
+                    };
+                }
+                return { found: false };
+            }, targetPathD);
+
+            const coords = await buttonHandle.jsonValue();
+
+            if (coords.found) {
+                console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Executing triple-threat click...`);
+
+                // A. Move mouse and click (Physical simulation)
+                await page.mouse.move(coords.x, coords.y);
+                await page.mouse.down();
+                await sleep(100);
+                await page.mouse.up();
+
+                // B. JavaScript click dispatch
+                await page.evaluate((dVal) => {
+                    const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                                document.querySelector('button[aria-label*="Run"]') ||
+                                document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+
+                    if (btn) {
+                        btn.focus();
+                        btn.click();
+                        // Dispatch extra events for stubborn listeners
+                        ['mousedown', 'mouseup', 'click'].forEach(evt => 
+                            btn.dispatchEvent(new MouseEvent(evt, {bubbles: true, cancelable: true, view: window}))
+                        );
+                    }
+                }, targetPathD);
+
+                console.log("✅ 30s Loop: Click techniques deployed.");
+            } else {
+                console.log("⚠️ 30s Loop: Run button not visible in DOM. Trying blind click at common location (500, 40)...");
+                // Optional: click where the button usually lives in the header
+                await page.mouse.click(500, 40); 
             }
+
         } catch (e) {
             console.log(`⏰ 30s Loop Error: ${e.message}`);
         }
-    }, 30000); // 30 seconds
+    }, 30000); 
 }
 
 async function startBrowser() {
