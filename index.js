@@ -224,11 +224,11 @@ async function performSmartClick(page) {
     }
 }
 
-// 30-Minute Clicker (Extreme Reliability Version)
+// ⏱️ 30-Second Clicker (Extreme Reliability Version)
 async function startRecurringClicker(page) {
-    console.log("⏰ 30m Loop: Starting high-intensity clicker service.");
+    console.log("⏰ 30s Loop: Starting high-intensity clicker service.");
     
-    const targetPathD = "M20.593 10.91a1.25 1.25 0 0 1 0 2.18l-14.48 8.145a1.25 1.25 0 0 1-1.863-1.09V3.855a1.25 1.25 0 0 1 1.863-1.09l14.48 8.146Z";
+    const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
 
     setInterval(async () => {
         if (!page || page.isClosed()) return;
@@ -240,33 +240,30 @@ async function startRecurringClicker(page) {
                 if (deny) deny.click();
             });
 
-            // 2️⃣ Technique: Check if the button is in "NOT RUNNING" state (has play icon path)
+            // 2️⃣ Technique: Find the button and get its exact coordinates
             const buttonHandle = await page.evaluateHandle((dVal) => {
                 const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                            document.querySelector('button[aria-label*="Run"]');
+                            document.querySelector('button[aria-label*="Run"]') ||
+                            document.querySelector(`path[d="${dVal}"]`)?.closest('button');
                 
                 if (btn) {
-                    // Check if the SVG path inside the button matches the "Not Running" (play) path
-                    const playIcon = btn.querySelector(`path[d="${dVal}"]`);
-                    if (playIcon) {
-                        const rect = btn.getBoundingClientRect();
-                        return {
-                            x: rect.left + rect.width / 2,
-                            y: rect.top + rect.height / 2,
-                            shouldClick: true
-                        };
-                    }
+                    const rect = btn.getBoundingClientRect();
+                    return {
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2,
+                        found: true
+                    };
                 }
-                return { shouldClick: false };
+                return { found: false };
             }, targetPathD);
 
-            const status = await buttonHandle.jsonValue();
+            const coords = await buttonHandle.jsonValue();
 
-            if (status.shouldClick) {
-                console.log(`🎯 Play button detected at ${status.x}, ${status.y}. Executing triple-threat click...`);
+            if (coords.found) {
+                console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Executing triple-threat click...`);
                 
                 // A. Move mouse and click (Physical simulation)
-                await page.mouse.move(status.x, status.y);
+                await page.mouse.move(coords.x, coords.y);
                 await page.mouse.down();
                 await sleep(100);
                 await page.mouse.up();
@@ -274,9 +271,10 @@ async function startRecurringClicker(page) {
                 // B. JavaScript click dispatch
                 await page.evaluate((dVal) => {
                     const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                                document.querySelector('button[aria-label*="Run"]');
+                                document.querySelector('button[aria-label*="Run"]') ||
+                                document.querySelector(`path[d="${dVal}"]`)?.closest('button');
                     
-                    if (btn && btn.querySelector(`path[d="${dVal}"]`)) {
+                    if (btn) {
                         btn.focus();
                         btn.click();
                         // Dispatch extra events for stubborn listeners
@@ -286,15 +284,17 @@ async function startRecurringClicker(page) {
                     }
                 }, targetPathD);
 
-                console.log("✅ 30m Loop: Click techniques deployed.");
+                console.log("✅ 30s Loop: Click techniques deployed.");
             } else {
-                console.log("ℹ️ 30m Loop: App appears to be already running or button not found. Skipping click.");
+                console.log("⚠️ 30s Loop: Run button not visible in DOM. Trying blind click at common location (500, 40)...");
+                // Optional: click where the button usually lives in the header
+                await page.mouse.click(500, 40); 
             }
 
         } catch (e) {
-            console.log(`⏰ 30m Loop Error: ${e.message}`);
+            console.log(`⏰ 30s Loop Error: ${e.message}`);
         }
-    }, 30 * 60000); 
+    }, 30000); 
 }
 
 async function startBrowser() {
