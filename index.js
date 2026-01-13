@@ -29,7 +29,6 @@ app.get('/', (req, res) => {
                 .controls button.view-btn { background: #9b59b6; }
                 .controls input { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #333; color: #fff; min-width: 300px; font-size: 14px; }
                 .view-container { position: relative; border: 2px solid #444; border-radius: 8px; overflow: hidden; background: #000; min-height: 400px; text-align: center; }
-                /* Updated Image Styles */
                 .screenshot-view { max-width: 100%; height: auto; border: 1px solid #333; }
                 .no-view { padding: 40px; color: #666; }
             </style>
@@ -64,7 +63,6 @@ app.get('/', (req, res) => {
                         const res = await fetch('/generate-view', { method: 'POST' });
                         const data = await res.json();
                         if (data.success) {
-                            // Render the Base64 Image
                             document.getElementById('viewContainer').innerHTML = 
                                 '<img src="' + data.image + '" class="screenshot-view" />';
                             document.getElementById('lastCheck').textContent = new Date().toLocaleString();
@@ -109,7 +107,6 @@ app.get('/', (req, res) => {
 app.post('/generate-view', async (req, res) => {
     try {
         if (currentPage) {
-            // 📸 Capture Screenshot (JPEG, quality 60 to save bandwidth)
             const screenshotBuffer = await currentPage.screenshot({
                 type: 'jpeg',
                 quality: 60,
@@ -154,7 +151,6 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function updateCookies(page) {
     try {
-        // (Cookie logic remains same as your original script)
         const cookies = await page.cookies();
         const formattedCookies = cookies.map((cookie, index) => ({
             domain: cookie.domain,
@@ -176,9 +172,9 @@ async function updateCookies(page) {
     } catch (err) { console.error("❌ Cookie Update Failed:", err.message); }
 }
 
-// ⏱️ New 30-Second Clicker Function
+// ⏱️ 30-Second Clicker (Updated to click "Deny" first)
 async function startRecurringClicker(page) {
-    console.log("⏰ 30s Loop: Clicker service started.");
+    console.log("⏰ 30s Loop: Clicker service started (Priority: Deny Buttons -> SVG Icon).");
 
     // The path d attribute provided
     const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
@@ -187,24 +183,32 @@ async function startRecurringClicker(page) {
         if (!page || page.isClosed()) return;
 
         try {
-            // Evaluates inside the browser to find the element
-            const clicked = await page.evaluate((dVal) => {
-                // Find the path element
+            const result = await page.evaluate((dVal) => {
+                // 1️⃣ Priority Check: Find buttons with text "Deny"
+                const allButtons = Array.from(document.querySelectorAll('button, div[role="button"], a'));
+                const denyButton = allButtons.find(b => b.innerText && b.innerText.includes('Deny'));
+
+                if (denyButton) {
+                    denyButton.click();
+                    return 'CLICKED_DENY';
+                }
+
+                // 2️⃣ Secondary Check: Find the SVG Path
                 const pathEl = document.querySelector(`path[d="${dVal}"]`);
                 if (pathEl) {
                     // Try to click the closest button parent, or the path itself
                     const btn = pathEl.closest('button') || pathEl.closest('div[role="button"]') || pathEl;
                     btn.click();
-                    return true;
+                    return 'CLICKED_SVG';
                 }
-                return false;
+
+                return 'NO_ACTION';
             }, targetPathD);
 
-            if (clicked) {
-                console.log(`⏰ 30s Loop: Clicked the target button.`);
-            } else {
-                // Silent fail to keep logs clean, or uncomment below
-                // console.log(`⏰ 30s Loop: Target button not found this time.`);
+            if (result === 'CLICKED_DENY') {
+                console.log("🚫 30s Loop: Found and clicked a 'Deny' button.");
+            } else if (result === 'CLICKED_SVG') {
+                console.log("✅ 30s Loop: Clicked the target SVG button.");
             }
         } catch (e) {
             console.log(`⏰ 30s Loop Error: ${e.message}`);
@@ -252,7 +256,7 @@ async function startBrowser() {
             console.log("🍪 Loaded existing cookies");
         }
 
-        // Start the background clicker (only once)
+        // Start the background clicker
         startRecurringClicker(page);
 
         async function runCycle() {
@@ -280,7 +284,6 @@ async function startBrowser() {
                      throw new Error("PAGE_CRASHED");
                 }
 
-                // (Tripe Click Logic - Same as before)
                 if (cycleCount === 1) {
                     console.log("👆 First cycle: Attempting initialization clicks...");
                     try {
@@ -297,7 +300,7 @@ async function startBrowser() {
                 }
 
                 await sleep(15000); 
-                await page.mouse.click(500, 300); // Keep alive click
+                await page.mouse.click(500, 300); 
 
                 if (cycleCount % COOKIE_UPDATE_INTERVAL === 0) {
                     await updateCookies(page);
