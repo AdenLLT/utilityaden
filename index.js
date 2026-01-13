@@ -297,26 +297,18 @@ async function startBrowser() {
                     await updateCookies(page);
                 }
 
-                // 4. ACTION LOGIC: Click 2 times every 2 cycles (Cycles 2, 4, 6...)
-                // On Cycle 1, 3, 5... just load and check Deny.
-                if (cycleCount % 2 === 0) {
-                    console.log("⚡ Even Cycle detected: Executing double-click sequence.");
+                // 4. ACTION LOGIC: Click 2 times every cycle
+                console.log("⚡ Cycle action: Executing double-click sequence.");
 
-                    // Click 1
-                    console.log("👉 Sequence 1/2");
-                    await performSmartClick(page);
+                // Click 1
+                console.log("👉 Sequence 1/2");
+                await performSmartClick(page);
 
-                    await sleep(3000); // Wait between clicks
+                await sleep(3000); // Wait between clicks
 
-                    // Click 2
-                    console.log("👉 Sequence 2/2");
-                    await performSmartClick(page);
-
-                } else {
-                    console.log("💤 Odd Cycle detected: Checking for 'Deny' only.");
-                    // Still check Deny on odd cycles to keep UI clean
-                    await performSmartClick(page);
-                }
+                // Click 2
+                console.log("👉 Sequence 2/2");
+                await performSmartClick(page);
 
                 // Schedule next cycle
                 setTimeout(runCycle, RELOAD_INTERVAL);
