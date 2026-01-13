@@ -1,0 +1,14 @@
+this is the button when it is RUNNING (SO DONT CLICK IT)
+
+<svg preserveAspectRatio="xMidYMin" width="16" height="16" viewBox="0 0 24 24" fill="var(--foreground-dimmest)" class="Icon-module__CwnszW__icon" aria-hidden="true" style="--Icon--size: 16px; --Icon--rotate: 0deg; width: 16px; height: 16px;"><path fill-rule="evenodd" d="M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z" clip-rule="evenodd"></path></svg>
+
+<button data-cy="ws-run-btn" class=" useView-module__etopAW__view IconButton-module__B3jpBG__root Interactive2-module__IAGpQq__shades Interactive2-module__IAGpQq__root Interactive2-module__IAGpQq__transition Interactive2-module__IAGpQq__focus Interactive2-module__IAGpQq__disabled _sdz_text _sdz_hoverable-2 _sdz_pressable-3 Interactive2-module__IAGpQq__borderRadius" type="button" data-react-aria-pressable="true" aria-label="Run or stop the app" style="--IconButton--size: 28px;"><svg preserveAspectRatio="xMidYMin" width="16" height="16" viewBox="0 0 24 24" fill="var(--foreground-dimmest)" class="Icon-module__CwnszW__icon" aria-hidden="true" style="--Icon--size: 16px; --Icon--rotate: 0deg; width: 16px; height: 16px;"><path fill-rule="evenodd" d="M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z" clip-rule="evenodd"></path></svg></button>
+
+this is when the button is NOT RUNNING (YOU MUST CLICK IT)
+
+<svg preserveAspectRatio="xMidYMin" width="16" height="16" viewBox="0 0 24 24" fill="var(--accent-positive-stronger)" class="Icon-module__CwnszW__icon" aria-hidden="true" style="--Icon--size: 16px; --Icon--rotate: 0deg; width: 16px; height: 16px;"><path fill-rule="evenodd" d="M20.593 10.91a1.25 1.25 0 0 1 0 2.18l-14.48 8.145a1.25 1.25 0 0 1-1.863-1.09V3.855a1.25 1.25 0 0 1 1.863-1.09l14.48 8.146Z" clip-rule="evenodd"></path></svg>
+
+<button data-cy="ws-run-btn" class=" useView-module__etopAW__view IconButton-module__B3jpBG__root Interactive2-module__IAGpQq__shades Interactive2-module__IAGpQq__root Interactive2-module__IAGpQq__transition Interactive2-module__IAGpQq__focus Interactive2-module__IAGpQq__disabled _sdz_text _sdz_hoverable-2 _sdz_pressable-3 Interactive2-module__IAGpQq__borderRadius" type="button" data-react-aria-pressable="true" aria-label="Run or stop the app" style="--IconButton--size: 28px;"><svg preserveAspectRatio="xMidYMin" width="16" height="16" viewBox="0 0 24 24" fill="var(--accent-positive-stronger)" class="Icon-module__CwnszW__icon" aria-hidden="true" style="--Icon--size: 16px; --Icon--rotate: 0deg; width: 16px; height: 16px;"><path fill-rule="evenodd" d="M20.593 10.91a1.25 1.25 0 0 1 0 2.18l-14.48 8.145a1.25 1.25 0 0 1-1.863-1.09V3.855a1.25 1.25 0 0 1 1.863-1.09l14.48 8.146Z" clip-rule="evenodd"></path></svg></button>
+
+
+So EVRY cycle, check if it's running or not. If it isn't runing then you MUST PERFORM THE TRIPLE THREAT CLICK. 
