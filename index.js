@@ -172,18 +172,17 @@ async function updateCookies(page) {
     } catch (err) { console.error("❌ Cookie Update Failed:", err.message); }
 }
 
-// ⏱️ 30-Second Clicker (Updated to click "Deny" first)
+// ⏱️ 30-Second Clicker (Updated Logic)
 async function startRecurringClicker(page) {
-    console.log("⏰ 30s Loop: Clicker service started (Priority: Deny Buttons -> SVG Icon).");
-
-    // The path d attribute provided
-    const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
+    console.log("⏰ 30s Loop: Clicker service started.");
+    console.log("   👉 Priority 1: 'Deny' buttons");
+    console.log("   👉 Priority 2: Replit 'Run' button (via data-cy or aria-label)");
 
     setInterval(async () => {
         if (!page || page.isClosed()) return;
 
         try {
-            const result = await page.evaluate((dVal) => {
+            const result = await page.evaluate(() => {
                 // 1️⃣ Priority Check: Find buttons with text "Deny"
                 const allButtons = Array.from(document.querySelectorAll('button, div[role="button"], a'));
                 const denyButton = allButtons.find(b => b.innerText && b.innerText.includes('Deny'));
@@ -193,22 +192,23 @@ async function startRecurringClicker(page) {
                     return 'CLICKED_DENY';
                 }
 
-                // 2️⃣ Secondary Check: Find the SVG Path
-                const pathEl = document.querySelector(`path[d="${dVal}"]`);
-                if (pathEl) {
-                    // Try to click the closest button parent, or the path itself
-                    const btn = pathEl.closest('button') || pathEl.closest('div[role="button"]') || pathEl;
-                    btn.click();
-                    return 'CLICKED_SVG';
+                // 2️⃣ Robust Check: Find the Replit Run Button by ID/Label
+                // We use multiple selectors to ensure we catch it in any state
+                const runButton = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                                  document.querySelector('button[aria-label="Run or stop the app"]');
+
+                if (runButton) {
+                    runButton.click();
+                    return 'CLICKED_RUN_BTN';
                 }
 
                 return 'NO_ACTION';
-            }, targetPathD);
+            });
 
             if (result === 'CLICKED_DENY') {
                 console.log("🚫 30s Loop: Found and clicked a 'Deny' button.");
-            } else if (result === 'CLICKED_SVG') {
-                console.log("✅ 30s Loop: Clicked the target SVG button.");
+            } else if (result === 'CLICKED_RUN_BTN') {
+                console.log("✅ 30s Loop: Clicked the Replit Run/Stop button.");
             }
         } catch (e) {
             console.log(`⏰ 30s Loop Error: ${e.message}`);
@@ -285,18 +285,16 @@ async function startBrowser() {
                 }
 
                 if (cycleCount === 1) {
-                    console.log("👆 First cycle: Attempting initialization clicks...");
+                    console.log("👆 First cycle: Checking for initialization dialogs...");
                     try {
                         await page.waitForFunction(() => !document.title.includes("Loading..."), { timeout: 30000 }).catch(()=>{});
-                        const targetXPath = '/html/body/div[1]/div[1]/div[1]/div/div/div[1]/div/div[2]/div/button';
-                        const elements = await page.$x(targetXPath);
-                        if (elements.length > 0) {
-                            for (let i = 1; i <= 3; i++) {
-                                await elements[0].click();
-                                await sleep(1500); 
-                            }
+                        // Also try the Run button once immediately on load
+                        const btn = await page.$('button[data-cy="ws-run-btn"]');
+                        if (btn) {
+                            await btn.click();
+                            console.log("👉 Initial Run button click performed.");
                         }
-                    } catch (err) { console.log("⚠️ Click Sequence Failed: " + err.message); }
+                    } catch (err) { console.log("⚠️ Initial Click Failed: " + err.message); }
                 }
 
                 await sleep(15000); 
