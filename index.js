@@ -155,144 +155,138 @@ async function updateCookies(page) {
     } catch (err) { console.error("❌ Cookie Update Failed:", err.message); }
 }
 
-// 🛡️ Single Action to Check Deny AND Click Target
+// 🛡️ Single Action: Only click if STOPPED
 async function performSmartClick(page) {
-    const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
+    // The "Triangle" (Play) Icon
+    const PLAY_ICON_PATH = "M20.593 10.91a1.25 1.25 0 0 1 0 2.18l-14.48 8.145a1.25 1.25 0 0 1-1.863-1.09V3.855a1.25 1.25 0 0 1 1.863-1.09l14.48 8.146Z";
 
     try {
-        // 1️⃣ Priority: Handle "Deny" buttons first
         const denyClicked = await page.evaluate(() => {
             const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
-            if (deny) {
-                deny.click();
-                return true;
-            }
+            if (deny) { deny.click(); return true; }
             return false;
         });
 
-        if(denyClicked) {
-            console.log("🛡️ 'Deny' button detected and clicked.");
-            await sleep(1000); // Wait for popup to close
-        }
+        if(denyClicked) await sleep(1000);
 
-        // 2️⃣ Find the specific "Run" button
+        // Check specifically for the PLAY button
         const buttonHandle = await page.evaluateHandle((dVal) => {
-            const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                        document.querySelector('button[aria-label*="Run"]') ||
-                        document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+            // Priority: Look for the specific Play Icon Path
+            const btn = document.querySelector(`path[d="${dVal}"]`)?.closest('button');
 
             if (btn) {
                 const rect = btn.getBoundingClientRect();
                 return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, found: true };
             }
             return { found: false };
-        }, targetPathD);
+        }, PLAY_ICON_PATH);
 
         const coords = await buttonHandle.jsonValue();
 
         if (coords.found) {
-            console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Clicking...`);
+            console.log(`🔴 App is STOPPED. Clicking Start at ${coords.x}, ${coords.y}...`);
 
-            // Safe Physical Click (using try/catch to avoid 'left already pressed' crashes)
+            // Physical Click
             try {
                 await page.mouse.move(coords.x, coords.y);
                 await page.mouse.down();
                 await sleep(100);
                 await page.mouse.up();
-            } catch (mouseErr) {
-                console.log(`⚠️ Physical click warning: ${mouseErr.message}. Attempting JS click fallback.`);
-                await page.mouse.up().catch(()=> {}); // Reset mouse state
-            }
+            } catch (mouseErr) { console.log("Physical click warning"); }
 
-            // JavaScript click dispatch (Backups)
+            // JS Click
             await page.evaluate((dVal) => {
-                const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                            document.querySelector('button[aria-label*="Run"]') ||
-                            document.querySelector(`path[d="${dVal}"]`)?.closest('button');
-                if (btn) {
-                    btn.focus();
-                    btn.click();
-                }
-            }, targetPathD);
+                const btn = document.querySelector(`path[d="${dVal}"]`)?.closest('button');
+                if (btn) btn.click();
+            }, PLAY_ICON_PATH);
 
-            console.log("✅ Click action executed.");
+            console.log("✅ Start command executed.");
         } else {
-            console.log("⚠️ Target button not found in DOM.");
+            console.log("🟢 Play button not found (App likely Running).");
         }
     } catch (e) {
-        console.log(`❌ Click Sequence Error: ${e.message}`);
+        console.log(`❌ Smart Click Error: ${e.message}`);
     }
 }
 
 // ⏱️ 30-Second Clicker (Extreme Reliability Version)
+// ⏱️ 30-Second Clicker (Smart State Detection)
 async function startRecurringClicker(page) {
-    console.log("⏰ 30s Loop: Starting high-intensity clicker service.");
-    
-    const targetPathD = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
+    console.log("⏰ 30s Loop: Starting smart state detection service.");
+
+    // The "Square" (Stop) Icon - Means it is RUNNING
+    const STOP_ICON_PATH = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
+
+    // The "Triangle" (Play) Icon - Means it is STOPPED (Target)
+    const PLAY_ICON_PATH = "M20.593 10.91a1.25 1.25 0 0 1 0 2.18l-14.48 8.145a1.25 1.25 0 0 1-1.863-1.09V3.855a1.25 1.25 0 0 1 1.863-1.09l14.48 8.146Z";
 
     setInterval(async () => {
         if (!page || page.isClosed()) return;
-        
+
         try {
-            // 1️⃣ Technique: Handle "Deny" buttons first
+            // 1️⃣ Handle "Deny" buttons first (Always good practice)
             await page.evaluate(() => {
                 const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
                 if (deny) deny.click();
             });
 
-            // 2️⃣ Technique: Find the button and get its exact coordinates
-            const buttonHandle = await page.evaluateHandle((dVal) => {
-                const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                            document.querySelector('button[aria-label*="Run"]') ||
-                            document.querySelector(`path[d="${dVal}"]`)?.closest('button');
-                
-                if (btn) {
-                    const rect = btn.getBoundingClientRect();
+            // 2️⃣ Check State & Get Coordinates
+            const status = await page.evaluate((stopPath, playPath) => {
+                // Helper to find button by path
+                const findBtn = (path) => document.querySelector(`path[d="${path}"]`)?.closest('button');
+
+                // Check if Running (Stop button visible)
+                const stopBtn = findBtn(stopPath);
+                if (stopBtn) return { state: 'RUNNING' };
+
+                // Check if Stopped (Play button visible)
+                const playBtn = findBtn(playPath) || document.querySelector('button[data-cy="ws-run-btn"]');
+
+                if (playBtn) {
+                    const rect = playBtn.getBoundingClientRect();
                     return {
+                        state: 'STOPPED',
                         x: rect.left + rect.width / 2,
-                        y: rect.top + rect.height / 2,
-                        found: true
+                        y: rect.top + rect.height / 2
                     };
                 }
-                return { found: false };
-            }, targetPathD);
 
-            const coords = await buttonHandle.jsonValue();
+                return { state: 'UNKNOWN' }; // Maybe loading
+            }, STOP_ICON_PATH, PLAY_ICON_PATH);
 
-            if (coords.found) {
-                console.log(`🎯 Target located at ${coords.x}, ${coords.y}. Executing triple-threat click...`);
-                
-                // A. Move mouse and click (Physical simulation)
-                await page.mouse.move(coords.x, coords.y);
+            // 3️⃣ Act based on State
+            if (status.state === 'RUNNING') {
+                console.log("🟢 App is RUNNING. No action needed.");
+            } 
+            else if (status.state === 'STOPPED') {
+                console.log(`🔴 App is STOPPED. Target at ${status.x}, ${status.y}. Executing TRIPLE THREAT CLICK...`);
+
+                // A. Physical Click
+                await page.mouse.move(status.x, status.y);
                 await page.mouse.down();
                 await sleep(100);
                 await page.mouse.up();
 
-                // B. JavaScript click dispatch
-                await page.evaluate((dVal) => {
-                    const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
-                                document.querySelector('button[aria-label*="Run"]') ||
-                                document.querySelector(`path[d="${dVal}"]`)?.closest('button');
-                    
+                // B. JS Click Dispatch (The specific Play button path)
+                await page.evaluate((playPath) => {
+                    const btn = document.querySelector(`path[d="${playPath}"]`)?.closest('button');
                     if (btn) {
                         btn.focus();
                         btn.click();
-                        // Dispatch extra events for stubborn listeners
                         ['mousedown', 'mouseup', 'click'].forEach(evt => 
                             btn.dispatchEvent(new MouseEvent(evt, {bubbles: true, cancelable: true, view: window}))
                         );
                     }
-                }, targetPathD);
+                }, PLAY_ICON_PATH);
 
-                console.log("✅ 30s Loop: Click techniques deployed.");
-            } else {
-                console.log("⚠️ 30s Loop: Run button not visible in DOM. Trying blind click at common location (500, 40)...");
-                // Optional: click where the button usually lives in the header
-                await page.mouse.click(500, 40); 
+                console.log("✅ Click sequence sent to Run button.");
+            } 
+            else {
+                console.log("⚠️ Status Unknown (Buttons not found). Waiting...");
             }
 
         } catch (e) {
-            console.log(`⏰ 30s Loop Error: ${e.message}`);
+            console.log(`⏰ Loop Error: ${e.message}`);
         }
     }, 30000); 
 }
