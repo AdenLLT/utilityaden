@@ -6,6 +6,78 @@ const app = express();
 
 let currentPage = null;
 
+// --- Global State for the Clicker ---
+let clickerInterval = null;
+
+// 🛑 Stop the clicker cleanly (Call this on crash or timeout)
+function stopClicker() {
+    if (clickerInterval) {
+        clearInterval(clickerInterval);
+        clickerInterval = null;
+        console.log("🛑 Clicker Service: STOPPED.");
+    }
+}
+
+// 🧠 The Logic: Checks button and clicks if needed
+async function runSmartClickCheck(page) {
+    if (!page || page.isClosed()) return;
+
+    try {
+        const status = await page.evaluate(() => {
+            const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                        document.querySelector('button[aria-label="Run or stop the app"]');
+
+            if (!btn) return { state: 'MISSING' };
+
+            const iconPath = btn.querySelector('path')?.getAttribute('d') || "";
+
+            // M20 = Triangle (Play), M3 = Square (Stop)
+            if (iconPath.includes('M20.593') || iconPath.startsWith('M20')) {
+                const rect = btn.getBoundingClientRect();
+                return { 
+                    state: 'STOPPED', 
+                    x: rect.left + rect.width / 2, 
+                    y: rect.top + rect.height / 2 
+                };
+            } else if (iconPath.includes('M3.25') || iconPath.startsWith('M3')) {
+                return { state: 'RUNNING' };
+            }
+            return { state: 'UNKNOWN' };
+        });
+
+        if (status.state === 'STOPPED') {
+            console.log(`🔴 App is STOPPED. Executing Triple-Threat Click at ${status.x}, ${status.y}...`);
+
+            // 1. Physical Click
+            await page.mouse.move(status.x, status.y);
+            await page.mouse.down();
+            await sleep(200); // Increased wait for stability
+            await page.mouse.up();
+
+            // 2. JS Click
+            await page.evaluate(() => {
+                const btn = document.querySelector('button[data-cy="ws-run-btn"]');
+                if(btn) {
+                    btn.click(); 
+                    // Dispatch explicit event for React
+                    const event = new MouseEvent('click', { view: window, bubbles: true, cancelable: true });
+                    btn.dispatchEvent(event);
+                }
+            });
+
+            console.log("✅ Click Sent.");
+        } else if (status.state === 'RUNNING') {
+            console.log("🟢 App is Running. No action.");
+        }
+
+    } catch (e) {
+        // Ignore "Target closed" errors effectively
+        if (!e.message.includes('Target closed')) {
+            console.log(`⚠️ Click Check Warning: ${e.message}`);
+        }
+    }
+}
+
 app.use(express.json());
 
 // --- Dashboard UI (Unchanged) ---
@@ -285,12 +357,14 @@ async function startRecurringClicker(page) {
     }, 30000); 
 }
 
+// 🚀 Main Browser Logic
 async function startBrowser() {
     const userDataDir = path.join(__dirname, 'chrome_user_data');
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
     const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
 
-    const RELOAD_INTERVAL = 3 * 60 * 1000; // 3 Minutes per cycle (Adjusted for safety)
+    // Config
+    const RELOAD_INTERVAL = 3 * 60 * 1000; // 3 Minutes
     const MAX_CYCLES_BEFORE_RESTART = 12; 
     const COOKIE_UPDATE_INTERVAL = 5;
 
@@ -316,7 +390,7 @@ async function startBrowser() {
         currentPage = page; 
         page.setDefaultTimeout(60000);
 
-        // Start the recurring clicker service
+        // Start the recurring clicker service (30-second loop)
         startRecurringClicker(page);
 
         await page.setViewport({ width: 1280, height: 720 });
@@ -333,22 +407,15 @@ async function startBrowser() {
             console.log(`\n🔄 Cycle ${cycleCount}/${MAX_CYCLES_BEFORE_RESTART} started...`);
 
             try {
-                if (cycleCount > MAX_CYCLES_BEFORE_RESTART) {
-                    console.log("♻️ Max cycles reached. Restarting browser...");
-                    throw new Error("PLANNED_RESTART");
-                }
+                if (cycleCount > MAX_CYCLES_BEFORE_RESTART) throw new Error("PLANNED_RESTART");
 
-                // 1. Navigate cleanly
+                // 1. Load Page
                 console.log(`⏳ Loading Replit Workspace...`);
                 try {
                     await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
-                } catch (e) {
-                    if (!e.message.includes('timeout')) console.log("⚠️ Load Warning: " + e.message);
-                }
+                } catch (e) { console.log("⚠️ Load Warning: " + e.message); }
 
-                // 2. Wait for page stability
                 await sleep(5000); 
-
                 const pageTitle = await page.title();
                 console.log(`📍 Current Title: "${pageTitle}"`);
 
@@ -356,23 +423,42 @@ async function startBrowser() {
                      throw new Error("PAGE_CRASHED");
                 }
 
-                // 3. Cookie Management
-                if (cycleCount % COOKIE_UPDATE_INTERVAL === 0) {
-                    await updateCookies(page);
-                }
+                // 2. Cookie Management
+                if (cycleCount % COOKIE_UPDATE_INTERVAL === 0) await updateCookies(page);
 
-                // 4. ACTION LOGIC: Clicks are now handled by the startRecurringClicker service.
-                // We'll still keep the check for Deny button here for additional reliability on cycle.
-                await page.evaluate(() => {
-                    const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
-                    if (deny) deny.click();
-                });
+                // 3. 🛡️ CLICKER LOGIC: Every 2 Cycles, Run for 5 Minutes
+                if (cycleCount % 2 === 0) {
+                    console.log("⏰ Even Cycle Detected: Starting 5-minute clicker loop.");
+
+                    // Stop any existing loop first
+                    stopClicker(); 
+
+                    // Run immediately once
+                    runSmartClickCheck(page);
+
+                    // Start Loop (Every 15 seconds)
+                    clickerInterval = setInterval(() => runSmartClickCheck(page), 15000);
+
+                    // 🛑 AUTO-STOP after 5 Minutes
+                    setTimeout(() => {
+                        console.log("⌛ 5 Minutes up. Stopping clicker loop.");
+                        stopClicker();
+                    }, 5 * 60 * 1000);
+                } else {
+                    console.log("💤 Odd Cycle: Clicker loop skipped (Running in background mode).");
+                    // Ensure it is stopped if it wasn't already
+                    stopClicker();
+                }
 
                 // Schedule next cycle
                 setTimeout(runCycle, RELOAD_INTERVAL);
 
             } catch (error) {
                 console.log(`❌ Cycle Error (${error.message}). Re-initializing...`);
+
+                // 🔥 CRITICAL: Kill the clicker loop so it doesn't error on dead page
+                stopClicker();
+
                 if (browser) await browser.close();
                 setTimeout(startBrowser, 5000);
             }
@@ -382,6 +468,7 @@ async function startBrowser() {
 
     } catch (err) {
         console.error("❌ Fatal Launch Error:", err.message);
+        stopClicker(); // Safety kill
         if (browser) await browser.close();
         setTimeout(startBrowser, 10000);
     }
