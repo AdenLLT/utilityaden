@@ -18,11 +18,34 @@ function stopClicker() {
     }
 }
 
-// 🧠 The Logic: Checks button and clicks if needed
+// 🧠 The Logic: Checks button and clicks if needed (with Deny button handling)
 async function runSmartClickCheck(page) {
     if (!page || page.isClosed()) return;
 
     try {
+        // FIRST: Check for and click "Deny" buttons before anything else
+        const denyClicked = await page.evaluate(() => {
+            const deny = Array.from(document.querySelectorAll('button')).find(b => 
+                b.innerText?.includes('Deny') || 
+                b.innerText?.includes('deny') ||
+                b.textContent?.includes('Deny') ||
+                b.textContent?.includes('deny')
+            );
+            if (deny) { 
+                deny.click(); 
+                console.log("✅ Clicked Deny button");
+                return true; 
+            }
+            return false;
+        });
+
+        if (denyClicked) {
+            // Wait for the deny action to complete
+            await sleep(1500);
+            console.log("⏳ Waited for Deny button action to complete");
+        }
+
+        // NOW proceed with the regular click check
         const status = await page.evaluate(() => {
             const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
                         document.querySelector('button[aria-label="Run or stop the app"]');
@@ -234,7 +257,12 @@ async function performSmartClick(page) {
     try {
         // 1️⃣ Handle "Deny" buttons first
         const denyClicked = await page.evaluate(() => {
-            const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
+            const deny = Array.from(document.querySelectorAll('button')).find(b => 
+                b.innerText?.includes('Deny') || 
+                b.innerText?.includes('deny') ||
+                b.textContent?.includes('Deny') ||
+                b.textContent?.includes('deny')
+            );
             if (deny) { deny.click(); return true; }
             return false;
         });
@@ -310,7 +338,27 @@ async function startRecurringClicker(page) {
         if (!page || page.isClosed()) return;
 
         try {
-            // Check State
+            // FIRST: Check for and click "Deny" buttons
+            const denyClicked = await page.evaluate(() => {
+                const deny = Array.from(document.querySelectorAll('button')).find(b => 
+                    b.innerText?.includes('Deny') || 
+                    b.innerText?.includes('deny') ||
+                    b.textContent?.includes('Deny') ||
+                    b.textContent?.includes('deny')
+                );
+                if (deny) { 
+                    deny.click(); 
+                    return true; 
+                }
+                return false;
+            });
+
+            if (denyClicked) {
+                await sleep(1500);
+                console.log("⏰ Loop: Clicked Deny button");
+            }
+
+            // THEN: Check State
             const status = await page.evaluate(() => {
                 const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
                             document.querySelector('button[aria-label="Run or stop the app"]');
