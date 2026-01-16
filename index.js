@@ -8,7 +8,7 @@ let currentPage = null;
 
 app.use(express.json());
 
-// --- Dashboard UI ---
+// --- Dashboard UI (Unchanged) ---
 app.get('/', (req, res) => {
     const html = `
         <!DOCTYPE html>
@@ -155,94 +155,132 @@ async function updateCookies(page) {
     } catch (err) { console.error("❌ Cookie Update Failed:", err.message); }
 }
 
-// ⏱️ 30-Second Smart Clicker - ONLY clicks if app is NOT running
+// 🛡️ Single Action: Smart Detection (Find Button First, Then Check Icon)
+async function performSmartClick(page) {
+    console.log("🔍 Checking App State...");
+
+    try {
+        // 1️⃣ Handle "Deny" buttons first
+        const denyClicked = await page.evaluate(() => {
+            const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
+            if (deny) { deny.click(); return true; }
+            return false;
+        });
+        if(denyClicked) await sleep(1000);
+
+        // 2️⃣ Check the Main Button State
+        const status = await page.evaluate(() => {
+            // Find the button using the stable ID (data-cy) or Label
+            const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                        document.querySelector('button[aria-label="Run or stop the app"]');
+
+            if (!btn) return { state: 'MISSING' };
+
+            // Look at the icon inside to see if it's Play (Triangle) or Stop (Square)
+            const iconPath = btn.querySelector('path')?.getAttribute('d') || "";
+
+            // The Play Triangle starts with "M20..."
+            if (iconPath.startsWith('M20') || iconPath.includes('M20.593')) {
+                const rect = btn.getBoundingClientRect();
+                return { 
+                    state: 'STOPPED', 
+                    x: rect.left + rect.width / 2, 
+                    y: rect.top + rect.height / 2 
+                };
+            } 
+            // The Stop Square starts with "M3..."
+            else if (iconPath.startsWith('M3') || iconPath.includes('M3.25')) {
+                return { state: 'RUNNING' };
+            }
+
+            return { state: 'UNKNOWN' };
+        });
+
+        // 3️⃣ Act on the result
+        if (status.state === 'STOPPED') {
+            console.log(`🔴 App is STOPPED. Found Play Button at ${status.x}, ${status.y}. Clicking...`);
+
+            // Triple Threat Click
+            try {
+                // 1. Physical Mouse Click
+                await page.mouse.move(status.x, status.y);
+                await page.mouse.down();
+                await sleep(100);
+                await page.mouse.up();
+
+                // 2. JS Click Force
+                await page.evaluate(() => {
+                    const btn = document.querySelector('button[data-cy="ws-run-btn"]');
+                    if (btn) btn.click();
+                });
+
+                console.log("✅ Click executed.");
+            } catch (err) { console.log("Click Error:", err.message); }
+
+        } else if (status.state === 'RUNNING') {
+            console.log("🟢 App is ALREADY RUNNING. (Stop button detected).");
+        } else if (status.state === 'MISSING') {
+            console.log("⚠️ Control button not found on page.");
+        } else {
+            console.log("⚠️ Unknown button state (Icon didn't match known paths).");
+        }
+
+    } catch (e) {
+        console.log(`❌ Smart Click Logic Error: ${e.message}`);
+    }
+}
+
+// ⏱️ 30-Second Loop: Uses the same robust "Find Button -> Check Icon" logic
 async function startRecurringClicker(page) {
-    console.log("⏰ Starting smart 30s clicker - will only click PLAY button when app is stopped.");
-
-    // PLAY button path (green triangle) - THIS is what we want to click
-    const PLAY_PATH = "M20.593 10.91a1.25 1.25 0 0 1 0 2.18l-14.48 8.145a1.25 1.25 0 0 1-1.863-1.09V3.855a1.25 1.25 0 0 1 1.863-1.09l14.48 8.146Z";
-
-    // STOP button path (square) - if we see this, DON'T click
-    const STOP_PATH = "M3.25 6A2.75 2.75 0 0 1 6 3.25h12A2.75 2.75 0 0 1 20.75 6v12A2.75 2.75 0 0 1 18 20.75H6A2.75 2.75 0 0 1 3.25 18V6Z";
+    console.log("⏰ 30s Loop: Starting robust state monitor.");
 
     setInterval(async () => {
         if (!page || page.isClosed()) return;
 
         try {
-            // 1️⃣ Always handle Deny buttons first
-            await page.evaluate(() => {
-                const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
-                if (deny) {
-                    deny.click();
-                    console.log('Clicked Deny button');
+            // Check State
+            const status = await page.evaluate(() => {
+                const btn = document.querySelector('button[data-cy="ws-run-btn"]') || 
+                            document.querySelector('button[aria-label="Run or stop the app"]');
+
+                if (!btn) return { state: 'MISSING' };
+
+                const iconPath = btn.querySelector('path')?.getAttribute('d') || "";
+
+                // M20 = Triangle (Play), M3 = Square (Stop)
+                if (iconPath.includes('M20.593') || iconPath.startsWith('M20')) {
+                    const rect = btn.getBoundingClientRect();
+                    return { 
+                        state: 'STOPPED', 
+                        x: rect.left + rect.width / 2, 
+                        y: rect.top + rect.height / 2 
+                    };
+                } else if (iconPath.includes('M3.25') || iconPath.startsWith('M3')) {
+                    return { state: 'RUNNING' };
                 }
+                return { state: 'UNKNOWN' };
             });
 
-            await sleep(500);
+            if (status.state === 'STOPPED') {
+                console.log(`🔴 Loop detected STOPPED state. Clicking Start...`);
 
-            // 2️⃣ Check which button is currently visible
-            const buttonState = await page.evaluate((playPath, stopPath) => {
-                // Check for PLAY button (app is stopped - we SHOULD click)
-                const playButton = document.querySelector(`path[d="${playPath}"]`)?.closest('button[data-cy="ws-run-btn"]');
-                if (playButton) {
-                    const rect = playButton.getBoundingClientRect();
-                    return {
-                        shouldClick: true,
-                        x: rect.left + rect.width / 2,
-                        y: rect.top + rect.height / 2,
-                        state: 'STOPPED'
-                    };
-                }
+                // Physical Click
+                await page.mouse.move(status.x, status.y);
+                await page.mouse.down();
+                await sleep(50);
+                await page.mouse.up();
 
-                // Check for STOP button (app is running - we should NOT click)
-                const stopButton = document.querySelector(`path[d="${stopPath}"]`)?.closest('button[data-cy="ws-run-btn"]');
-                if (stopButton) {
-                    return {
-                        shouldClick: false,
-                        state: 'RUNNING'
-                    };
-                }
-
-                return { shouldClick: false, state: 'NOT_FOUND' };
-            }, PLAY_PATH, STOP_PATH);
-
-            // 3️⃣ Take action based on button state
-            if (buttonState.state === 'RUNNING') {
-                console.log("✅ App is RUNNING - no action needed");
-            } else if (buttonState.state === 'STOPPED' && buttonState.shouldClick) {
-                console.log(`🎯 App is STOPPED - clicking PLAY at (${buttonState.x}, ${buttonState.y})`);
-
-                // Triple-threat click strategy
-                try {
-                    // A. Physical mouse click
-                    await page.mouse.move(buttonState.x, buttonState.y);
-                    await page.mouse.down();
-                    await sleep(100);
-                    await page.mouse.up();
-                } catch (mouseErr) {
-                    console.log(`⚠️ Mouse click warning: ${mouseErr.message}`);
-                    await page.mouse.up().catch(() => {});
-                }
-
-                // B. JavaScript click with events
-                await page.evaluate((playPath) => {
-                    const btn = document.querySelector(`path[d="${playPath}"]`)?.closest('button[data-cy="ws-run-btn"]');
-                    if (btn) {
-                        btn.focus();
-                        btn.click();
-                        ['mousedown', 'mouseup', 'click'].forEach(evt => 
-                            btn.dispatchEvent(new MouseEvent(evt, {bubbles: true, cancelable: true, view: window}))
-                        );
-                    }
-                }, PLAY_PATH);
-
-                console.log("✅ PLAY button clicked successfully");
-            } else {
-                console.log("⚠️ Run button not found in DOM");
+                // JS Backup Click
+                await page.evaluate(() => {
+                    const btn = document.querySelector('button[data-cy="ws-run-btn"]');
+                    if(btn) btn.click();
+                });
+            } else if (status.state === 'RUNNING') {
+                console.log("🟢 Loop: App is Running.");
             }
 
         } catch (e) {
-            console.log(`⏰ Clicker Error: ${e.message}`);
+            console.log(`⏰ Loop Error: ${e.message}`);
         }
     }, 30000); 
 }
@@ -252,7 +290,7 @@ async function startBrowser() {
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
     const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
 
-    const RELOAD_INTERVAL = 3 * 60 * 1000; // 3 Minutes
+    const RELOAD_INTERVAL = 3 * 60 * 1000; // 3 Minutes per cycle (Adjusted for safety)
     const MAX_CYCLES_BEFORE_RESTART = 12; 
     const COOKIE_UPDATE_INTERVAL = 5;
 
@@ -278,7 +316,7 @@ async function startBrowser() {
         currentPage = page; 
         page.setDefaultTimeout(60000);
 
-        // Start the smart recurring clicker
+        // Start the recurring clicker service
         startRecurringClicker(page);
 
         await page.setViewport({ width: 1280, height: 720 });
@@ -300,6 +338,7 @@ async function startBrowser() {
                     throw new Error("PLANNED_RESTART");
                 }
 
+                // 1. Navigate cleanly
                 console.log(`⏳ Loading Replit Workspace...`);
                 try {
                     await page.goto(REPL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -307,6 +346,7 @@ async function startBrowser() {
                     if (!e.message.includes('timeout')) console.log("⚠️ Load Warning: " + e.message);
                 }
 
+                // 2. Wait for page stability
                 await sleep(5000); 
 
                 const pageTitle = await page.title();
@@ -316,16 +356,19 @@ async function startBrowser() {
                      throw new Error("PAGE_CRASHED");
                 }
 
+                // 3. Cookie Management
                 if (cycleCount % COOKIE_UPDATE_INTERVAL === 0) {
                     await updateCookies(page);
                 }
 
-                // Extra deny button check on cycle
+                // 4. ACTION LOGIC: Clicks are now handled by the startRecurringClicker service.
+                // We'll still keep the check for Deny button here for additional reliability on cycle.
                 await page.evaluate(() => {
                     const deny = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.includes('Deny'));
                     if (deny) deny.click();
                 });
 
+                // Schedule next cycle
                 setTimeout(runCycle, RELOAD_INTERVAL);
 
             } catch (error) {
