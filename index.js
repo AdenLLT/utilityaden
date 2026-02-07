@@ -409,7 +409,7 @@ async function startRecurringClicker(page) {
 async function startBrowser() {
     const userDataDir = path.join(__dirname, 'chrome_user_data');
     const cookiesPath = path.join(__dirname, 'replit_cookies.json');
-    const REPL_URL = 'https://replit.com/@HUDV1/mb#main.py';
+    const REPL_URL = 'https://replit.com/@chumtiyauy67/mb';
 
     // Config
     const RELOAD_INTERVAL = 3 * 60 * 1000; // 3 Minutes
