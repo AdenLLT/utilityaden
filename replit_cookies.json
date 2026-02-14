@@ -1,7 +1,7 @@
 [
 {
     "domain": ".replit.com",
-    "expirationDate": 1770217095.169145,
+    "expirationDate": 1770665918.684339,
     "hostOnly": false,
     "httpOnly": true,
     "name": "__cf_bm",
@@ -10,7 +10,7 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "br2QjJGAQOdM6AviRdYGqcCB67SUv3tiW1N8O4dYGXQ-1770215295-1.0.1.1-Rq46bSi9nRBCCLEA5vwbVuIA0bE7P1kPro95QE4f1s4J7GlgHnRPWl3PZxXVimPGvFc6K405.sbgkRH2Zrk7yHfqY4lo1snilv8d4ydR66s",
+    "value": "oTv.k.UUQ6Me2u8wZ5luQtq4Dmt_75KF8JeO0bd85Po-1771086099-1.0.1.1-6ZsZw1E3cnPIgMRj6njWMGCAgdptg1bF.Upn5KEoTApezDX4DU4mErTmy.kYoNADsWq1HJtrE3D8y5erqcY7saBgT0NxGn6mcRZq_AolLj4",
     "id": 1
 },
 {
@@ -43,7 +43,7 @@
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1801751301,
+    "expirationDate": 1802200195,
     "hostOnly": false,
     "httpOnly": false,
     "name": "__stripe_mid",
@@ -57,7 +57,7 @@
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1770217101,
+    "expirationDate": 1770665995,
     "hostOnly": false,
     "httpOnly": false,
     "name": "__stripe_sid",
@@ -66,12 +66,12 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "07a1f955-dac7-4b7e-b784-8952ba3923ad73b0a6",
+    "value": "9473deda-129e-4244-bae9-5708765cfcb70d6466",
     "id": 5
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1770217098,
+    "expirationDate": 1770665921,
     "hostOnly": false,
     "httpOnly": false,
     "name": "_adora_rate_limited",
@@ -107,7 +107,7 @@
     "secure": true,
     "session": true,
     "storeId": "0",
-    "value": "dODLzeboC9ufC7owY6QblXadc6OaNarMByO.n2JlywY-1770215295517-0.0.1.1-604800000",
+    "value": "R.eJ8AD6AoXvM75dollneuUKibDF3uOzsVJxORGsQW0-1771086099299-0.0.1.1-604800000",
     "id": 8
 },
 {
@@ -126,7 +126,7 @@
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1804775297.864494,
+    "expirationDate": 1805224165.605169,
     "hostOnly": false,
     "httpOnly": false,
     "name": "_ga",
@@ -140,7 +140,7 @@
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1804775299.459576,
+    "expirationDate": 1805224196.463124,
     "hostOnly": false,
     "httpOnly": false,
     "name": "_ga_MPJY3F1YEL",
@@ -149,12 +149,26 @@
     "secure": false,
     "session": false,
     "storeId": "0",
-    "value": "GS2.2.s1770215299$o53$g0$t1770215299$j60$l0$h428591338",
+    "value": "GS2.2.s1770664121$o55$g1$t1770664196$j48$l0$h2135347054",
     "id": 11
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1770215358,
+    "expirationDate": 1770664223,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "_gali",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "react-aria7092645778-%3Ar31%3A",
+    "id": 12
+},
+{
+    "domain": ".replit.com",
+    "expirationDate": 1770664244,
     "hostOnly": false,
     "httpOnly": false,
     "name": "_gat",
@@ -164,7 +178,7 @@
     "session": false,
     "storeId": "0",
     "value": "1",
-    "id": 12
+    "id": 13
 },
 {
     "domain": ".replit.com",
@@ -178,11 +192,11 @@
     "session": false,
     "storeId": "0",
     "value": "1.1.1078894665.1766317304",
-    "id": 13
+    "id": 14
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1770301697,
+    "expirationDate": 1770750565,
     "hostOnly": false,
     "httpOnly": false,
     "name": "_gid",
@@ -191,8 +205,8 @@
     "secure": false,
     "session": false,
     "storeId": "0",
-    "value": "GA1.2.782888266.1770215298",
-    "id": 14
+    "value": "GA1.2.1423210293.1770664120",
+    "id": 15
 },
 {
     "domain": ".replit.com",
@@ -206,7 +220,7 @@
     "session": false,
     "storeId": "0",
     "value": "eyJpZCI6ImYxZWNhNjZjLWM1YjQtNTA1Ni1iY2FkLTA4N2JjNmRmYjNhNiIsImNyZWF0ZWQiOjE3NTAzMjY4ODAxNDAsImV4aXN0aW5nIjp0cnVlfQ==",
-    "id": 15
+    "id": 16
 },
 {
     "domain": ".replit.com",
@@ -220,7 +234,7 @@
     "session": false,
     "storeId": "0",
     "value": "1",
-    "id": 16
+    "id": 17
 },
 {
     "domain": ".replit.com",
@@ -234,7 +248,7 @@
     "session": false,
     "storeId": "0",
     "value": "01JY3SSAF8M39164NT8HCD8XYW_.tt.1",
-    "id": 17
+    "id": 18
 },
 {
     "domain": ".replit.com",
@@ -248,7 +262,7 @@
     "session": false,
     "storeId": "0",
     "value": "2073b7b82eb28170d52f1750326884",
-    "id": 18
+    "id": 19
 },
 {
     "domain": ".replit.com",
@@ -262,11 +276,11 @@
     "session": false,
     "storeId": "0",
     "value": "1770215297248",
-    "id": 19
+    "id": 20
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1804775297.248213,
+    "expirationDate": 1805224165.653071,
     "hostOnly": false,
     "httpOnly": false,
     "name": "afUserId",
@@ -276,11 +290,11 @@
     "session": false,
     "storeId": "0",
     "value": "a63be096-37e8-4d67-a44e-da267ad91319-p",
-    "id": 20
+    "id": 21
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1801751297,
+    "expirationDate": 1802200196,
     "hostOnly": false,
     "httpOnly": false,
     "name": "ajs_anonymous_id",
@@ -290,11 +304,11 @@
     "session": false,
     "storeId": "0",
     "value": "661395a0-1520-4d9c-9132-dbd911ca7c7b",
-    "id": 21
+    "id": 22
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1801751297,
+    "expirationDate": 1802200196,
     "hostOnly": false,
     "httpOnly": false,
     "name": "ajs_user_id",
@@ -304,11 +318,11 @@
     "session": false,
     "storeId": "0",
     "value": "44022475",
-    "id": 22
+    "id": 23
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1804775296,
+    "expirationDate": 1805224119,
     "hostOnly": false,
     "httpOnly": false,
     "name": "coframe.cvc",
@@ -317,12 +331,12 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "32",
-    "id": 23
+    "value": "34",
+    "id": 24
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1804775296,
+    "expirationDate": 1805224119,
     "hostOnly": false,
     "httpOnly": false,
     "name": "coframe.lastVisitTime",
@@ -331,12 +345,12 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "1770215296595",
-    "id": 24
+    "value": "1770664119488",
+    "id": 25
 },
 {
     "domain": ".replit.com",
-    "expirationDate": 1804775296,
+    "expirationDate": 1805224165,
     "hostOnly": false,
     "httpOnly": false,
     "name": "coframe.user.token",
@@ -346,7 +360,7 @@
     "session": false,
     "storeId": "0",
     "value": "4739d7eb-fbeb-4a81-ae04-9b2661e72383",
-    "id": 25
+    "id": 26
 },
 {
     "domain": ".replit.com",
@@ -360,7 +374,7 @@
     "session": false,
     "storeId": "0",
     "value": "4c8851b9-2391-4ddd-9f56-2d64442fb513",
-    "id": 26
+    "id": 27
 },
 {
     "domain": ".replit.com",
@@ -374,7 +388,7 @@
     "session": false,
     "storeId": "0",
     "value": "1769571716418::fPpbtyOQ6vrbimgaE4UV.10.1769571727478.0",
-    "id": 27
+    "id": 28
 },
 {
     "domain": ".replit.com",
@@ -388,7 +402,7 @@
     "session": false,
     "storeId": "0",
     "value": "1758974193248::oPNk8vEM0AWbqSnkNiIE.10.1758975911876.0",
-    "id": 28
+    "id": 29
 },
 {
     "domain": ".replit.com",
@@ -402,7 +416,7 @@
     "session": false,
     "storeId": "0",
     "value": "1769571716417::JMYrmCqlsvYgusBWBItv.3.1769571727478.1",
-    "id": 29
+    "id": 30
 },
 {
     "domain": "replit.com",
@@ -416,11 +430,11 @@
     "session": false,
     "storeId": "0",
     "value": "077e57f87613402cae06733fb97f5304",
-    "id": 30
+    "id": 31
 },
 {
     "domain": "replit.com",
-    "expirationDate": 1770216208,
+    "expirationDate": 1770665096,
     "hostOnly": true,
     "httpOnly": false,
     "name": "_dd_s",
@@ -429,8 +443,8 @@
     "secure": false,
     "session": false,
     "storeId": "0",
-    "value": "logs=1&id=d61ca8d2-02b9-491c-8be7-52566170a867&created=1770215296033&expire=1770216199017",
-    "id": 31
+    "value": "logs=1&id=c40139f2-d1db-48ba-9bdf-24e05e42e81a&created=1770664119399&expire=1770665094223&rum=0",
+    "id": 32
 },
 {
     "domain": "replit.com",
@@ -444,7 +458,7 @@
     "session": false,
     "storeId": "0",
     "value": "661395a0-1520-4d9c-9132-dbd911ca7c7b",
-    "id": 32
+    "id": 33
 },
 {
     "domain": "replit.com",
@@ -458,11 +472,11 @@
     "session": false,
     "storeId": "0",
     "value": "44022475",
-    "id": 33
+    "id": 34
 },
 {
     "domain": "replit.com",
-    "expirationDate": 1770217096,
+    "expirationDate": 1770665996,
     "hostOnly": true,
     "httpOnly": false,
     "name": "amplitudeSessionId",
@@ -471,12 +485,12 @@
     "secure": false,
     "session": false,
     "storeId": "0",
-    "value": "1770215295",
-    "id": 34
+    "value": "1770664119",
+    "id": 35
 },
 {
     "domain": "replit.com",
-    "expirationDate": 1770820099.539202,
+    "expirationDate": 1771268921.286727,
     "hostOnly": true,
     "httpOnly": true,
     "name": "connect.sid",
@@ -485,8 +499,8 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjB1a2x0QSJ9.eyJpc3MiOiJodHRwczovL3Nlc3Npb24uZmlyZWJhc2UuZ29vZ2xlLmNvbS9yZXBsaXQtd2ViIiwibmFtZSI6IlNwaWtlQ29uZXoiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jSmlXVVdIdlRoN0MycmVSOExMZVhUbDJ3eVdmbjA2QnVWRnFpTGF4YXUxYi1ITUJnXHUwMDNkczk2LWMiLCJhdWQiOiJyZXBsaXQtd2ViIiwiYXV0aF90aW1lIjoxNzY5NTcxNzM1LCJ1c2VyX2lkIjoiMFo5SW44OFk4ZGNWQXZxamR6ZTRRQk1qNGhEMyIsInN1YiI6IjBaOUluODhZOGRjVkF2cWpkemU0UUJNajRoRDMiLCJpYXQiOjE3NzAyMTUyOTksImV4cCI6MTc3MDgyMDA5OSwiZW1haWwiOiJzcGlrZWNvbmV6QGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7Imdvb2dsZS5jb20iOlsiMTAxNzQwMTYyMzg3MTE0ODcyNjIyIl0sImVtYWlsIjpbInNwaWtlY29uZXpAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoiZ29vZ2xlLmNvbSJ9fQ.EUD9wfNi_H5Y5sS-B4LVxSREz7CCWWuDyY7d04A4gHRRu9eWuM8HzLM1wlKKVaZ0fRLR2K6dj45OJqQ7AVhfaMzHETL-ckSCDvBRwGupMTy1ew13rqh7fP0dM4hvvT7KGK-2-RSUsBC1ZslBXG3jPdDcWypi1XlyWWLMmVqFB7BptWHLm4dvKwN0fXDfWfYhYpiM24hLUHgRTlMf9wEjpSrvt1RKok4KGCsARE0Lkvoovjc4VybzZeRUUWqC8PxbGQdbukRWDbe1oxSNPRDtKbcfWIexpic3iSnll6ZDII2-TGNOllgS270IyRNDTookPYtJE3pT2uzWwtU6ci2h9w",
-    "id": 35
+    "value": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjB1a2x0QSJ9.eyJpc3MiOiJodHRwczovL3Nlc3Npb24uZmlyZWJhc2UuZ29vZ2xlLmNvbS9yZXBsaXQtd2ViIiwibmFtZSI6IlNwaWtlQ29uZXoiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jSmlXVVdIdlRoN0MycmVSOExMZVhUbDJ3eVdmbjA2QnVWRnFpTGF4YXUxYi1ITUJnXHUwMDNkczk2LWMiLCJhdWQiOiJyZXBsaXQtd2ViIiwiYXV0aF90aW1lIjoxNzY5NTcxNzM1LCJ1c2VyX2lkIjoiMFo5SW44OFk4ZGNWQXZxamR6ZTRRQk1qNGhEMyIsInN1YiI6IjBaOUluODhZOGRjVkF2cWpkemU0UUJNajRoRDMiLCJpYXQiOjE3NzEwODYxMDEsImV4cCI6MTc3MTY5MDkwMSwiZW1haWwiOiJzcGlrZWNvbmV6QGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7Imdvb2dsZS5jb20iOlsiMTAxNzQwMTYyMzg3MTE0ODcyNjIyIl0sImVtYWlsIjpbInNwaWtlY29uZXpAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoiZ29vZ2xlLmNvbSJ9fQ.bre063ef2Z51vxWGDNTkidn86Sgxtcfyt39gIhWOOq4ImLQLJwULnzmmqDOBHKbTHX3zmfWMz4FuKUiOj7QsLFCCwcOqPBc12qGyKKZhIeCoU_NLALs-l5h5nB5ORKBf0StfJslbPrwNX6SEd5AHYiN2SFjC6fFV4smR7hm9baLb21SF2IKXznPw_CBEtXRExvd0Va_aQxu7WKgSUV8DDtFdPHW-boM6HB75kv4wyIyqk5ZlUdK-rQVUPcZd2I0SNuOmwbFfJKsNSLAdirn-a99jkKCy9MNHxBj3l9MLdOygAq4JenDG7aql0D0jACY-MmI-uhWhU33QjoNKD51a2w",
+    "id": 36
 },
 {
     "domain": "replit.com",
@@ -499,21 +513,21 @@
     "session": true,
     "storeId": "0",
     "value": "44022475",
-    "id": 36
+    "id": 37
 },
 {
     "domain": "replit.com",
-    "expirationDate": 1770820099.5393,
+    "expirationDate": 1771268921.240748,
     "hostOnly": true,
-    "httpOnly": true,
+    "httpOnly": false,
     "name": "replit_authed",
     "path": "/",
-    "sameSite": "lax",
-    "secure": true,
+    "sameSite": "unspecified",
+    "secure": false,
     "session": false,
     "storeId": "0",
     "value": "1",
-    "id": 37
+    "id": 38
 },
 {
     "domain": "replit.com",
@@ -527,6 +541,19 @@
     "session": false,
     "storeId": "0",
     "value": "e22e40c8-987f-47ec-bef1-512b4efc2b61",
-    "id": 38
+    "id": 39
+},
+{
+    "domain": "replit.com",
+    "hostOnly": true,
+    "httpOnly": false,
+    "name": "sidebarClosed2",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": true,
+    "storeId": "0",
+    "value": "true",
+    "id": 40
 }
 ]
